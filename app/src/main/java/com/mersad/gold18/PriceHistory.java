@@ -19,9 +19,19 @@ public class PriceHistory {
     private static final long THIRTY_DAYS = 30 * ONE_DAY;
 
     private static String getKey(String source) {
+
         if ("milli".equals(source)) {
             return "prices_milli";
         }
+
+        if ("snappgold".equals(source)) {
+            return "prices_snappgold";
+        }
+
+        if ("tgju".equals(source)) {
+            return "prices_tgju";
+        }
+
         return "prices_digikala";
     }
 

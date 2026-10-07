@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#B38B16"/>
-    <corners android:radius="12dp"/>
-</shape>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:state_pressed="true"
+        android:drawable="@drawable/button_gold_pressed"/>
+
+    <item android:drawable="@drawable/button_gold_normal"/>
+
+</selector>

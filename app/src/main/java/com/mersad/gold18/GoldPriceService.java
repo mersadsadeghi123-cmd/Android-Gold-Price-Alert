@@ -32,13 +32,29 @@ public class GoldPriceService extends Service {
     private static final String MILLI_API =
             "https://milli.gold/api/v1/public/milli-price/external";
 
+    private static final String TGJU_URL =
+            "https://www.tgju.org/profile/geram18";
+
+    private static final String SNAPPGOLD_API = "https://snappgold.net/api/backend/api/v1/products/gold-price";
+
     private static final String CHANNEL_ID =
             "gold_background";
 
     private static final String ALERT_CHANNEL_ID =
             "gold_alerts";
 
+    private static final long RAPID_CHANGE_WINDOW =
+            5 * 60_000L;
+
+    private static final double RAPID_CHANGE_THRESHOLD =
+            0.5;
+
+    private static final long RAPID_ALERT_COOLDOWN =
+            10 * 60_000L;
+
     private long lastHistorySave = 0;
+
+    private volatile boolean checking = false;
 
     private final Handler handler =
             new Handler(Looper.getMainLooper());
@@ -50,7 +66,7 @@ public class GoldPriceService extends Service {
                 MODE_PRIVATE
         ).getLong(
                 "background_interval",
-                10000
+                15000
         );
     }
 
@@ -67,16 +83,36 @@ public class GoldPriceService extends Service {
 
     private String getSourceName() {
 
-        return "milli".equals(getSource())
-                ? "میلی"
-                : "دیجی‌کالا";
+        if ("milli".equals(getSource())) {
+            return "میلی";
+        }
+
+        if ("tgju".equals(getSource())) {
+            return "TGJU";
+        }
+
+        if ("snappgold".equals(getSource())) {
+            return "اسنپ‌گلد";
+        }
+
+        return "دیجی‌کالا";
     }
 
     private String getApiUrl() {
 
-        return "milli".equals(getSource())
-                ? MILLI_API
-                : DIGIKALA_API;
+        if ("milli".equals(getSource())) {
+            return MILLI_API;
+        }
+
+        if ("snappgold".equals(getSource())) {
+            return SNAPPGOLD_API;
+        }
+
+        if ("tgju".equals(getSource())) {
+            return TGJU_URL;
+        }
+
+        return DIGIKALA_API;
     }
 
     private final Runnable checker =
@@ -85,7 +121,9 @@ public class GoldPriceService extends Service {
                 @Override
                 public void run() {
 
-                    checkPrice();
+                    if (!checking) {
+                        checkPrice();
+                    }
 
                     handler.postDelayed(
                             this,
@@ -96,6 +134,14 @@ public class GoldPriceService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+
+        if (intent != null &&
+                "com.mersad.gold18.WIDGET_REFRESH"
+                        .equals(intent.getAction())) {
+
+            checkPrice();
+        }
+
         return START_STICKY;
     }
 
@@ -170,14 +216,35 @@ public class GoldPriceService extends Service {
 
     private void checkPrice() {
 
+        if (checking) {
+            return;
+        }
+
+        checking = true;
+
         new Thread(() -> {
 
             HttpURLConnection connection = null;
 
             try {
 
+                final String requestSource =
+                        getSource();
+
+                final String requestUrl;
+
+                if ("milli".equals(requestSource)) {
+                    requestUrl = MILLI_API;
+                } else if ("tgju".equals(requestSource)) {
+                    requestUrl = TGJU_URL;
+                } else if ("snappgold".equals(requestSource)) {
+                    requestUrl = SNAPPGOLD_API;
+                } else {
+                    requestUrl = DIGIKALA_API;
+                }
+
                 URL url =
-                        new URL(getApiUrl());
+                        new URL(requestUrl);
 
                 connection =
                         (HttpURLConnection)
@@ -208,16 +275,32 @@ public class GoldPriceService extends Service {
 
                 reader.close();
 
-                JSONObject json =
-                        new JSONObject(
-                                response.toString()
-                        );
-
-                long price =
-                        parsePrice(json);
-
                 String source =
-                        getSource();
+                        requestSource;
+
+                long price;
+
+                if ("tgju".equals(source)) {
+
+                    price =
+                            parseTgjuHtml(response.toString());
+
+                } else if ("snappgold".equals(source)) {
+
+                    price = Long.parseLong(
+                            response.toString().trim()
+                    );
+
+                } else {
+
+                    JSONObject json =
+                            new JSONObject(
+                                    response.toString()
+                            );
+
+                    price =
+                            parsePrice(json);
+                }
 
                 long now =
                         System.currentTimeMillis();
@@ -233,10 +316,147 @@ public class GoldPriceService extends Service {
                     lastHistorySave = now;
                 }
 
+                SharedPreferences widgetPrefs =
+                        getSharedPreferences(
+                                "gold_settings",
+                                MODE_PRIVATE
+                        );
+
+                long oldWidgetPrice =
+                        widgetPrefs.getLong(
+                                "widget_price",
+                                0
+                        );
+
+                long widgetChange =
+                        oldWidgetPrice > 0
+                                ? price - oldWidgetPrice
+                                : 0;
+
+                widgetPrefs.edit()
+                        .putLong(
+                                "widget_price",
+                                price
+                        )
+                        .putLong(
+                                "widget_change",
+                                widgetChange
+                        )
+                        .putString(
+                                "widget_source",
+                                sourceName(source)
+                        )
+                        .putLong(
+                                "widget_last_update",
+                                now
+                        )
+                        .putBoolean(
+                                "widget_online",
+                                true
+                        )
+                        .apply();
+
+                MerGoldWidget.updateWidgets(this);
+
                 updateBackgroundNotification(
                         price,
                         source
                 );
+
+                double rapidChangePercent =
+                        getRapidChangePercent(
+                                price,
+                                source
+                        );
+
+                SharedPreferences rapidPrefs =
+                        getSharedPreferences(
+                                "gold_settings",
+                                MODE_PRIVATE
+                        );
+
+                rapidPrefs.edit()
+                        .putString(
+                                "rapid_change_percent_" + source,
+                                Double.toString(rapidChangePercent)
+                        )
+                        .apply();
+
+                String rapidAlertedKey =
+                        "rapid_alerted_" + source;
+
+                boolean rapidAlerted =
+                        rapidPrefs.getBoolean(
+                                rapidAlertedKey,
+                                false
+                        );
+
+                if (Math.abs(rapidChangePercent)
+                        >= RAPID_CHANGE_THRESHOLD) {
+
+                    String rapidCooldownKey =
+                            "rapid_alert_time_" + source;
+
+                    long lastRapidAlert =
+                            rapidPrefs.getLong(
+                                    rapidCooldownKey,
+                                    0
+                            );
+
+                    long nowRapidAlert =
+                            System.currentTimeMillis();
+
+                    boolean rapidCooldownActive =
+                            lastRapidAlert > 0 &&
+                            nowRapidAlert - lastRapidAlert
+                                    < RAPID_ALERT_COOLDOWN;
+
+                    if (!rapidCooldownActive) {
+
+                        String rapidTitle =
+                                rapidChangePercent > 0
+                                        ? "افزایش سریع قیمت طلا"
+                                        : "کاهش سریع قیمت طلا";
+
+                        String rapidMessage =
+                                "قیمت در ۵ دقیقه اخیر " +
+                                String.format(
+                                        Locale.US,
+                                        "%.2f",
+                                        Math.abs(rapidChangePercent)
+                                ) +
+                                "٪ " +
+                                (rapidChangePercent > 0
+                                        ? "افزایش"
+                                        : "کاهش") +
+                                " داشته است.";
+
+                        sendAlert(
+                                rapidTitle,
+                                rapidMessage
+                        );
+
+                        rapidPrefs.edit()
+                                .putBoolean(
+                                        rapidAlertedKey,
+                                        true
+                                )
+                                .putLong(
+                                        rapidCooldownKey,
+                                        nowRapidAlert
+                                )
+                                .apply();
+                    }
+
+                } else {
+
+                    rapidPrefs.edit()
+                            .putBoolean(
+                                    rapidAlertedKey,
+                                    false
+                            )
+                            .apply();
+                }
 
                 checkTargets(
                         price,
@@ -250,9 +470,131 @@ public class GoldPriceService extends Service {
                 if (connection != null) {
                     connection.disconnect();
                 }
+
+                checking = false;
             }
 
         }).start();
+    }
+
+    private long fetchTgjuPrice(HttpURLConnection connection)
+            throws Exception {
+
+        BufferedReader reader =
+                new BufferedReader(
+                        new InputStreamReader(
+                                connection.getInputStream()
+                        )
+                );
+
+        StringBuilder html =
+                new StringBuilder();
+
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+            html.append(line);
+        }
+
+        reader.close();
+
+        String page = html.toString();
+
+        String label =
+                "<td class=\"text-right\">نرخ فعلی</td>";
+
+        int labelIndex =
+                page.indexOf(label);
+
+        if (labelIndex == -1) {
+            throw new Exception("TGJU current price label not found");
+        }
+
+        int valueStart =
+                page.indexOf(
+                        "<td class=\"text-left\">",
+                        labelIndex
+                );
+
+        if (valueStart == -1) {
+            throw new Exception("TGJU current price value not found");
+        }
+
+        valueStart +=
+                "<td class=\"text-left\">".length();
+
+        int valueEnd =
+                page.indexOf(
+                        "</td>",
+                        valueStart
+                );
+
+        if (valueEnd == -1) {
+            throw new Exception("TGJU current price end not found");
+        }
+
+        String priceText =
+                page.substring(
+                        valueStart,
+                        valueEnd
+                )
+                .replace(",", "")
+                .trim();
+
+        return Long.parseLong(priceText) / 10;
+    }
+
+    private long parseTgjuHtml(String page)
+            throws Exception {
+
+        String label =
+                "<td class=\"text-right\">نرخ فعلی</td>";
+
+        int labelIndex =
+                page.indexOf(label);
+
+        if (labelIndex == -1) {
+            throw new Exception(
+                    "TGJU current price label not found"
+            );
+        }
+
+        int valueStart =
+                page.indexOf(
+                        "<td class=\"text-left\">",
+                        labelIndex
+                );
+
+        if (valueStart == -1) {
+            throw new Exception(
+                    "TGJU current price value not found"
+            );
+        }
+
+        valueStart +=
+                "<td class=\"text-left\">".length();
+
+        int valueEnd =
+                page.indexOf(
+                        "</td>",
+                        valueStart
+                );
+
+        if (valueEnd == -1) {
+            throw new Exception(
+                    "TGJU current price end not found"
+            );
+        }
+
+        String priceText =
+                page.substring(
+                        valueStart,
+                        valueEnd
+                )
+                .replace(",", "")
+                .trim();
+
+        return Long.parseLong(priceText) / 10;
     }
 
     private long parsePrice(JSONObject json)
@@ -262,12 +604,12 @@ public class GoldPriceService extends Service {
 
             return json
                     .getJSONObject("data")
-                    .getLong("price18");
+                    .getLong("price18") * 100;
         }
 
         return json
                 .getJSONObject("gold18")
-                .getLong("price");
+                .getLong("price") * 100;
     }
 
     private void updateBackgroundNotification(
@@ -363,6 +705,60 @@ public class GoldPriceService extends Service {
                     sourceName(source) +
                     " • طلای ۱۸ عیار";
 
+            SharedPreferences settings =
+                    getSharedPreferences(
+                            "gold_settings",
+                            MODE_PRIVATE
+                    );
+
+            String highTarget =
+                    settings.getString(
+                            "high_target_" + source,
+                            ""
+                    );
+
+            String lowTarget =
+                    settings.getString(
+                            "low_target_" + source,
+                            ""
+                    );
+
+            boolean highEnabled =
+                    settings.getBoolean(
+                            "high_enabled_" + source,
+                            true
+                    );
+
+            boolean lowEnabled =
+                    settings.getBoolean(
+                            "low_enabled_" + source,
+                            true
+                    );
+
+            String targetText = "";
+
+            if (highEnabled &&
+                    !highTarget.isEmpty()) {
+
+                targetText +=
+                        "🔺 بالا: " +
+                        highTarget +
+                        " تومان";
+            }
+
+            if (lowEnabled &&
+                    !lowTarget.isEmpty()) {
+
+                if (!targetText.isEmpty()) {
+                    targetText += "\n";
+                }
+
+                targetText +=
+                        "🔻 پایین: " +
+                        lowTarget +
+                        " تومان";
+            }
+
             String compactText =
                     "💰 " +
                     formatPrice(currentPrice) +
@@ -370,20 +766,14 @@ public class GoldPriceService extends Service {
                     changeText;
 
             String details =
-                    "🟡 منبع: " +
-                    sourceName(source) +
-                    "\n\n" +
-                    "💰 قیمت لحظه‌ای\n" +
+                    "💰 " +
                     formatPrice(currentPrice) +
-                    " تومان\n\n" +
-                    "📈 بیشترین\n" +
-                    formatPrice(highest) +
-                    " تومان\n\n" +
-                    "📉 کمترین\n" +
-                    formatPrice(lowest) +
-                    " تومان\n\n" +
-                    "📊 تغییر\n" +
+                    " تومان\n" +
                     changeText;
+
+            if (!targetText.isEmpty()) {
+                details += "\n" + targetText;
+            }
 
             Notification.Builder builder =
                     new Notification.Builder(
@@ -442,9 +832,19 @@ public class GoldPriceService extends Service {
 
     private String sourceName(String source) {
 
-        return "milli".equals(source)
-                ? "میلی"
-                : "دیجی‌کالا";
+        if ("milli".equals(source)) {
+            return "میلی";
+        }
+
+        if ("snappgold".equals(source)) {
+            return "اسنپ‌گلد";
+        }
+
+        if ("tgju".equals(source)) {
+            return "TGJU";
+        }
+
+        return "دیجی‌کالا";
     }
 
     private void checkTargets(
@@ -460,11 +860,35 @@ public class GoldPriceService extends Service {
         String suffix =
                 "_alerted_" + source;
 
+        String highTargetKey =
+                "high_target_" + source;
+
+        String highEnabledKey =
+                "high_enabled_" + source;
+
+        String highTarget2Key =
+                "high_target_2_" + source;
+
+        String highEnabled2Key =
+                "high_enabled_2_" + source;
+
+        String lowTargetKey =
+                "low_target_" + source;
+
+        String lowEnabledKey =
+                "low_enabled_" + source;
+
+        String lowTarget2Key =
+                "low_target_2_" + source;
+
+        String lowEnabled2Key =
+                "low_enabled_2_" + source;
+
         checkSingleTarget(
                 prefs,
                 price,
-                "high_target",
-                "high_enabled",
+                highTargetKey,
+                highEnabledKey,
                 "high_alerted" + suffix,
                 true,
                 "🔺 هدف بالای طلا"
@@ -473,8 +897,8 @@ public class GoldPriceService extends Service {
         checkSingleTarget(
                 prefs,
                 price,
-                "high_target_2",
-                "high_enabled_2",
+                highTarget2Key,
+                highEnabled2Key,
                 "high_alerted_2" + suffix,
                 true,
                 "🔺 هدف بالای طلا ۲"
@@ -483,8 +907,8 @@ public class GoldPriceService extends Service {
         checkSingleTarget(
                 prefs,
                 price,
-                "low_target",
-                "low_enabled",
+                lowTargetKey,
+                lowEnabledKey,
                 "low_alerted" + suffix,
                 false,
                 "🔻 هدف پایین طلا"
@@ -493,8 +917,8 @@ public class GoldPriceService extends Service {
         checkSingleTarget(
                 prefs,
                 price,
-                "low_target_2",
-                "low_enabled_2",
+                lowTarget2Key,
+                lowEnabled2Key,
                 "low_alerted_2" + suffix,
                 false,
                 "🔻 هدف پایین طلا ۲"
@@ -573,6 +997,64 @@ public class GoldPriceService extends Service {
             }
 
         } catch (Exception ignored) {
+        }
+    }
+
+    private double getRapidChangePercent(
+            long currentPrice,
+            String source) {
+
+        try {
+
+            JSONArray history =
+                    PriceHistory.get(
+                            this,
+                            source
+                    );
+
+            if (history.length() == 0) {
+                return 0.0;
+            }
+
+            long now =
+                    System.currentTimeMillis();
+
+            long cutoff =
+                    now - RAPID_CHANGE_WINDOW;
+
+            long referencePrice = 0;
+
+            for (int i = history.length() - 1;
+                 i >= 0;
+                 i--) {
+
+                JSONObject item =
+                        history.getJSONObject(i);
+
+                long time =
+                        item.getLong("time");
+
+                if (time <= cutoff) {
+
+                    referencePrice =
+                            item.getLong("price");
+
+                    break;
+                }
+            }
+
+            if (referencePrice <= 0) {
+                return 0.0;
+            }
+
+            return (
+                    (currentPrice - referencePrice)
+                            * 100.0
+            ) / referencePrice;
+
+        } catch (Exception ignored) {
+
+            return 0.0;
         }
     }
 

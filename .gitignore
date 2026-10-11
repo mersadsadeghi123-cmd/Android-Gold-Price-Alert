@@ -7,3 +7,9 @@ local.properties
 *.hprof
 .idea/
 .DS_Store
+.backup_*/
+backup_*/
+backups/
+*.zip
+*.backup*
+build.log

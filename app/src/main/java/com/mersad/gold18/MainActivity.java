@@ -156,7 +156,11 @@ public class MainActivity extends Activity {
     private TextView digikalaComparePrice;
     private TextView milliComparePrice;
     private TextView snappGoldComparePrice;
+    private TextView topGoldComparePrice;
+    private TextView melliGoldComparePrice;
+    private TextView talasiComparePrice;
     private TextView tgjuComparePrice;
+    private TextView wallGoldComparePrice;
     private TextView marketDiffText;
 
     private TextView lastUpdateText;
@@ -235,6 +239,10 @@ public class MainActivity extends Activity {
     private RadioButton milliRadio;
     private RadioButton tgjuRadio;
     private RadioButton snappGoldRadio;
+    private RadioButton topGoldRadio;
+    private RadioButton melliGoldRadio;
+    private RadioButton talasiRadio;
+    private RadioButton wallGoldRadio;
 
     private final Handler handler =
             new Handler(Looper.getMainLooper());
@@ -247,6 +255,104 @@ public class MainActivity extends Activity {
 
     private SharedPreferences prefs;
 
+    private static final String SOURCE_REGISTRY = "source_registry";
+    private static final String VISIBLE_SOURCES_KEY = "visible_sources";
+
+    private static final String[] ALL_SOURCE_IDS = {
+            "digikala",
+            "milli",
+            "tgju",
+            "snappgold",
+            "topgold",
+            "melligold",
+            "talasi",
+            "wallgold"
+    };
+
+    private String[] getVisibleSources() {
+        String saved = getSharedPreferences(
+                SOURCE_REGISTRY,
+                MODE_PRIVATE
+        ).getString(VISIBLE_SOURCES_KEY, "");
+
+        if (saved == null || saved.trim().isEmpty()) {
+            return new String[]{
+                    "digikala",
+                    "milli",
+                    "tgju",
+                    "snappgold"
+            };
+        }
+
+        java.util.LinkedHashSet<String> selected =
+                new java.util.LinkedHashSet<>();
+
+        for (String id : saved.split(",")) {
+            for (String validId : ALL_SOURCE_IDS) {
+                if (validId.equals(id.trim())) {
+                    selected.add(validId);
+                    break;
+                }
+            }
+            if (selected.size() == 4) {
+                break;
+            }
+        }
+
+        if (selected.size() != 4) {
+            return new String[]{
+                    "digikala",
+                    "milli",
+                    "tgju",
+                    "snappgold"
+            };
+        }
+
+        return selected.toArray(new String[0]);
+    }
+
+    private boolean saveVisibleSources(String[] sourceIds) {
+        if (sourceIds == null || sourceIds.length != 4) {
+            return false;
+        }
+
+        java.util.LinkedHashSet<String> selected =
+                new java.util.LinkedHashSet<>();
+
+        for (String id : sourceIds) {
+            boolean valid = false;
+
+            for (String knownId : ALL_SOURCE_IDS) {
+                if (knownId.equals(id)) {
+                    valid = true;
+                    break;
+                }
+            }
+
+            if (!valid || !selected.add(id)) {
+                return false;
+            }
+        }
+
+        StringBuilder value = new StringBuilder();
+        for (String id : selected) {
+            if (value.length() > 0) {
+                value.append(",");
+            }
+            value.append(id);
+        }
+
+        getSharedPreferences(
+                SOURCE_REGISTRY,
+                MODE_PRIVATE
+        ).edit()
+                .putString(VISIBLE_SOURCES_KEY, value.toString())
+                .apply();
+
+        return true;
+    }
+
+
 private final java.util.IdentityHashMap<TextView, Integer> originalTextColors =
         new java.util.IdentityHashMap<>();
 
@@ -258,8 +364,17 @@ private final java.util.IdentityHashMap<TextView, Integer> originalTextColors =
 
     private static final String SNAPPGOLD_API = "https://snappgold.net/api/backend/api/v1/products/gold-price";
 
+    private static final String TOPGOLD_API =
+            "https://topgoldonline.com/wp-admin/admin-ajax.php?action=gpc_get_live_price";
+
     private static final String MILLI_API =
             "https://milli.gold/api/v1/public/milli-price/external";
+
+    private static final String TALASI_API =
+            "https://api.talasea.ir/api/market/getGoldPrice";
+
+    private static final String WALLGOLD_API =
+            "https://api.wallgold.ir/api/v1/prices";
 
     private static final String CHANNEL_ID =
             "gold_alerts";
@@ -450,6 +565,8 @@ private final java.util.IdentityHashMap<TextView, Integer> originalTextColors =
         setContentView(
                 R.layout.activity_main
         );
+        setupSourceManager();
+        applyVisibleSourceRows();
 
         LinearLayout container =
                 findViewById(R.id.mainContainer);
@@ -510,6 +627,24 @@ private final java.util.IdentityHashMap<TextView, Integer> originalTextColors =
                 findViewById(
                         R.id.tgjuComparePrice
                 );
+
+        topGoldComparePrice =
+                findViewById(
+                        R.id.topGoldComparePrice
+                );
+
+        melliGoldComparePrice =
+                findViewById(
+                        R.id.melliGoldComparePrice
+                );
+
+        talasiComparePrice =
+                findViewById(
+                        R.id.talasiComparePrice
+                );
+
+        wallGoldComparePrice =
+                findViewById(R.id.wallGoldComparePrice);
 
         marketDiffText =
                 findViewById(
@@ -738,7 +873,9 @@ private final java.util.IdentityHashMap<TextView, Integer> originalTextColors =
             highTab.setTextColor(Color.parseColor("#355D28"));
 
             lowTab.setBackgroundResource(0);
-            lowTab.setTextColor(Color.parseColor("#777777"));
+            lowTab.setTextColor(Color.parseColor(
+                    dark ? "#C8C5BE" : "#777777"
+            ));
         });
 
         lowTab.setOnClickListener(v -> {
@@ -749,7 +886,9 @@ private final java.util.IdentityHashMap<TextView, Integer> originalTextColors =
             lowTab.setTextColor(Color.parseColor("#355D28"));
 
             highTab.setBackgroundResource(0);
-            highTab.setTextColor(Color.parseColor("#777777"));
+            highTab.setTextColor(Color.parseColor(
+                    dark ? "#C8C5BE" : "#777777"
+            ));
         });
 
         digikalaRadio =
@@ -767,6 +906,10 @@ private final java.util.IdentityHashMap<TextView, Integer> originalTextColors =
                         R.id.tgjuRadio
                 );
 snappGoldRadio = findViewById(R.id.snappGoldRadio);
+        topGoldRadio = findViewById(R.id.topGoldRadio);
+        melliGoldRadio = findViewById(R.id.melliGoldRadio);
+        talasiRadio = findViewById(R.id.talasiRadio);
+        wallGoldRadio = findViewById(R.id.wallGoldRadio);
 
         Button dayButton =
                 findViewById(
@@ -818,6 +961,10 @@ snappGoldRadio = findViewById(R.id.snappGoldRadio);
                 "tgju".equals(source)
         );
         snappGoldRadio.setChecked("snappgold".equals(getSource()));
+        topGoldRadio.setChecked("topgold".equals(getSource()));
+        melliGoldRadio.setChecked("melligold".equals(getSource()));
+        talasiRadio.setChecked("talasi".equals(getSource()));
+        wallGoldRadio.setChecked("wallgold".equals(getSource()));
 
         digikalaRadio.setOnClickListener(
                 v -> changeSource("digikala")
@@ -831,6 +978,10 @@ snappGoldRadio = findViewById(R.id.snappGoldRadio);
                 v -> changeSource("tgju")
         );
         snappGoldRadio.setOnClickListener(v -> changeSource("snappgold"));
+        topGoldRadio.setOnClickListener(v -> changeSource("topgold"));
+        melliGoldRadio.setOnClickListener(v -> changeSource("melligold"));
+        talasiRadio.setOnClickListener(v -> changeSource("talasi"));
+        wallGoldRadio.setOnClickListener(v -> changeSource("wallgold"));
 
         setupCalculatorModes();
 
@@ -1099,6 +1250,13 @@ snappGoldRadio = findViewById(R.id.snappGoldRadio);
 
         voiceHelpButton.setOnClickListener(
                 v -> showVoiceAlertHelp()
+        );
+
+        TextView smartAnalysisHelpButton =
+                findViewById(R.id.smartAnalysisHelpButton);
+
+        smartAnalysisHelpButton.setOnClickListener(
+                v -> showSmartAnalysisDisclaimer()
         );
 
         saveButton.setOnClickListener(
@@ -1405,6 +1563,22 @@ snappGoldRadio = findViewById(R.id.snappGoldRadio);
             return "اسنپ‌گلد";
         }
 
+        if ("topgold".equals(getSource())) {
+            return "تاپ‌گلد";
+        }
+
+        if ("melligold".equals(getSource())) {
+            return "ملی‌گلد";
+        }
+
+        if ("talasi".equals(getSource())) {
+            return "طلاسی";
+        }
+
+        if ("wallgold".equals(getSource())) {
+            return "وال‌گلد";
+        }
+
         return "دیجی‌کالا";
     }
 
@@ -1474,6 +1648,36 @@ snappGoldRadio = findViewById(R.id.snappGoldRadio);
         );
     }
 
+    private void syncSourceRadioSelection(String source) {
+        RadioGroup rowOne = findViewById(R.id.sourceRowOne);
+        RadioGroup rowTwo = findViewById(R.id.sourceRowTwo);
+
+        if (rowOne != null) {
+            rowOne.clearCheck();
+        }
+        if (rowTwo != null) {
+            rowTwo.clearCheck();
+        }
+
+        if ("digikala".equals(source) && digikalaRadio != null) {
+            digikalaRadio.setChecked(true);
+        } else if ("milli".equals(source) && milliRadio != null) {
+            milliRadio.setChecked(true);
+        } else if ("tgju".equals(source) && tgjuRadio != null) {
+            tgjuRadio.setChecked(true);
+        } else if ("snappgold".equals(source) && snappGoldRadio != null) {
+            snappGoldRadio.setChecked(true);
+        } else if ("topgold".equals(source) && topGoldRadio != null) {
+            topGoldRadio.setChecked(true);
+        } else if ("melligold".equals(source) && melliGoldRadio != null) {
+            melliGoldRadio.setChecked(true);
+        } else if ("talasi".equals(source) && talasiRadio != null) {
+            talasiRadio.setChecked(true);
+        } else if ("wallgold".equals(source) && wallGoldRadio != null) {
+            wallGoldRadio.setChecked(true);
+        }
+    }
+
     private void changeSource(
             String source) {
 
@@ -1491,6 +1695,7 @@ snappGoldRadio = findViewById(R.id.snappGoldRadio);
                 )
                 .apply();
 
+        syncSourceRadioSelection(source);
         loadSourceSettings();
 
         currentPrice = 0;
@@ -1582,6 +1787,18 @@ snappGoldRadio = findViewById(R.id.snappGoldRadio);
                         "متوجه شدم",
                         null
                 )
+                .show();
+    }
+
+    private void showSmartAnalysisDisclaimer() {
+        new AlertDialog.Builder(this)
+                .setTitle("توجه و سلب مسئولیت")
+                .setMessage(
+                        "تحلیل هوشمند mrgold صرفاً بر اساس داده‌های موجود و بررسی روند نمودار قیمت ارائه می‌شود و ممکن است با شرایط واقعی بازار متفاوت باشد. " +
+                        "این تحلیل تضمینی برای پیش‌بینی دقیق قیمت‌های آینده نیست و نباید تنها مبنای تصمیم‌گیری برای خرید یا فروش طلا قرار گیرد. " +
+                        "مسئولیت تصمیم‌های معاملاتی بر عهدهٔ کاربر است و سازندهٔ برنامه در قبال زیان‌های ناشی از اتکا به این تحلیل مسئولیتی ندارد."
+                )
+                .setPositiveButton("متوجه شدم", null)
                 .show();
     }
 
@@ -1693,15 +1910,20 @@ snappGoldRadio = findViewById(R.id.snappGoldRadio);
 
         View.OnClickListener listener = v -> {
 
+            boolean darkMode = prefs.getBoolean("dark_mode", false);
+            int inactiveTabTextColor = darkMode
+                    ? Color.rgb(220, 216, 205)
+                    : Color.rgb(102, 102, 102);
+
             quickPanel.setVisibility(View.GONE);
             madePanel.setVisibility(View.GONE);
             meltedPanel.setVisibility(View.GONE);
             sellPanel.setVisibility(View.GONE);
 
-            quick.setTextColor(Color.rgb(102, 102, 102));
-            made.setTextColor(Color.rgb(102, 102, 102));
-            melted.setTextColor(Color.rgb(102, 102, 102));
-            sell.setTextColor(Color.rgb(102, 102, 102));
+            quick.setTextColor(inactiveTabTextColor);
+            made.setTextColor(inactiveTabTextColor);
+            melted.setTextColor(inactiveTabTextColor);
+            sell.setTextColor(inactiveTabTextColor);
 
             quick.setBackgroundResource(R.drawable.calculator_tab_inactive);
             made.setBackgroundResource(R.drawable.calculator_tab_inactive);
@@ -2143,6 +2365,18 @@ snappGoldRadio = findViewById(R.id.snappGoldRadio);
             return SNAPPGOLD_API;
         }
 
+        if ("topgold".equals(getSource())) {
+            return TOPGOLD_API;
+        }
+
+        if ("talasi".equals(getSource())) {
+            return TALASI_API;
+        }
+
+        if ("wallgold".equals(getSource())) {
+            return WALLGOLD_API;
+        }
+
         return DIGIKALA_API;
     }
 
@@ -2214,14 +2448,66 @@ snappGoldRadio = findViewById(R.id.snappGoldRadio);
     }
 
     private long parsePrice(
-            JSONObject json)
+            JSONObject json,
+            String source)
             throws Exception {
 
-        if ("milli".equals(getSource())) {
+        if ("topgold".equals(source)) {
+            return json
+                    .getJSONObject("data")
+                    .getLong("price");
+        }
 
+        if ("melligold".equals(source)) {
+            return json
+                    .getJSONObject("data")
+                    .getLong("price_sell");
+        }
+
+        if ("milli".equals(source)) {
             return json
                     .getJSONObject("data")
                     .getLong("price18") * 100;
+        }
+
+        if ("talasi".equals(source)) {
+            return json.getLong("price") * 1000;
+        }
+
+        if ("wallgold".equals(source)) {
+            if (!json.optBoolean("success", false)) {
+                throw new Exception("Wallgold API success=false");
+            }
+
+            JSONArray result = json.optJSONArray("result");
+            if (result == null) {
+                throw new Exception("Wallgold result is missing");
+            }
+
+            Long buyPrice = null;
+            for (int i = 0; i < result.length(); i++) {
+                JSONObject item = result.optJSONObject(i);
+                if (item == null || ! "GLD_18C_750TMN".equals(
+                        item.optString("symbol"))) {
+                    continue;
+                }
+
+                String side = item.optString("side");
+                String rawPrice = item.optString("price")
+                        .replace(",", "").trim();
+                long value;
+                try {
+                    value = Long.parseLong(rawPrice);
+                } catch (NumberFormatException ignored) {
+                    continue;
+                }
+                if (value <= 0) continue;
+                if ("sell".equals(side)) return value;
+                if ("buy".equals(side)) buyPrice = value;
+            }
+
+            if (buyPrice != null) return buyPrice;
+            throw new Exception("Wallgold 18K price not found");
         }
 
         return json
@@ -2334,6 +2620,12 @@ snappGoldRadio = findViewById(R.id.snappGoldRadio);
             apiUrl = TGJU_URL;
         } else if ("snappgold".equals(source)) {
             return fetchSnappGoldPrice();
+        } else if ("topgold".equals(source)) {
+            apiUrl = TOPGOLD_API;
+        } else if ("talasi".equals(source)) {
+            apiUrl = TALASI_API;
+        } else if ("wallgold".equals(source)) {
+            apiUrl = WALLGOLD_API;
         } else {
             apiUrl = DIGIKALA_API;
         }
@@ -2374,6 +2666,12 @@ if ("tgju".equals(source)) {
 
             JSONObject json =
                     new JSONObject(response.toString());
+
+            if ("topgold".equals(source)) {
+                return json
+                        .getJSONObject("data")
+                        .getLong("price");
+            }
 
             if ("milli".equals(source)) {
                 return json
@@ -2541,6 +2839,101 @@ if ("tgju".equals(source)) {
         );
     }
 
+    private String fetchMelliGoldResponse() throws Exception {
+        HttpURLConnection first = null;
+        HttpURLConnection retry = null;
+
+        try {
+            URL url = new URL(
+                    "https://melligold.com/api/v1/exchange/buy-sell-price/?symbol=XAU18&format=json");
+
+            first = (HttpURLConnection) url.openConnection();
+            first.setInstanceFollowRedirects(false);
+            first.setRequestMethod("GET");
+            first.setConnectTimeout(7000);
+            first.setReadTimeout(7000);
+            first.setUseCaches(false);
+            first.setRequestProperty("Accept", "application/json");
+            first.setRequestProperty("User-Agent",
+                    "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");
+
+            int status = first.getResponseCode();
+
+            if (status == HttpURLConnection.HTTP_OK) {
+                return readMelliGoldBody(first);
+            }
+
+            StringBuilder cookies = new StringBuilder();
+            for (java.util.Map.Entry<String, java.util.List<String>> entry
+                    : first.getHeaderFields().entrySet()) {
+                if (entry.getKey() != null
+                        && "Set-Cookie".equalsIgnoreCase(entry.getKey())
+                        && entry.getValue() != null) {
+                    for (String value : entry.getValue()) {
+                        if (value != null) {
+                            String cookie = value.split(";", 2)[0].trim();
+                            if (!cookie.isEmpty()) {
+                                if (cookies.length() > 0) {
+                                    cookies.append("; ");
+                                }
+                                cookies.append(cookie);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if ((status != HttpURLConnection.HTTP_MOVED_TEMP
+                    && status != HttpURLConnection.HTTP_MOVED_PERM
+                    && status != HttpURLConnection.HTTP_SEE_OTHER
+                    && status != 307 && status != 308)
+                    || cookies.length() == 0) {
+                throw new Exception("MelliGold initial HTTP status: " + status);
+            }
+
+            first.disconnect();
+            first = null;
+
+            retry = (HttpURLConnection) url.openConnection();
+            retry.setInstanceFollowRedirects(false);
+            retry.setRequestMethod("GET");
+            retry.setConnectTimeout(7000);
+            retry.setReadTimeout(7000);
+            retry.setUseCaches(false);
+            retry.setRequestProperty("Accept", "application/json");
+            retry.setRequestProperty("User-Agent",
+                    "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");
+            retry.setRequestProperty("Cookie", cookies.toString());
+
+            int retryStatus = retry.getResponseCode();
+            if (retryStatus != HttpURLConnection.HTTP_OK) {
+                throw new Exception("MelliGold retry HTTP status: " + retryStatus);
+            }
+
+            return readMelliGoldBody(retry);
+        } finally {
+            if (first != null) {
+                first.disconnect();
+            }
+            if (retry != null) {
+                retry.disconnect();
+            }
+        }
+    }
+
+    private String readMelliGoldBody(HttpURLConnection connection)
+            throws Exception {
+        StringBuilder body = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(connection.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                body.append(line);
+            }
+        }
+        return body.toString();
+    }
+
     private void getGoldPrice() {
 
         new Thread(() -> {
@@ -2560,54 +2953,38 @@ if ("tgju".equals(source)) {
                     requestUrl = TGJU_URL;
                 } else if ("snappgold".equals(requestSource)) {
                     requestUrl = SNAPPGOLD_API;
+                } else if ("topgold".equals(requestSource)) {
+                    requestUrl = TOPGOLD_API;
+                } else if ("melligold".equals(requestSource)) {
+                    requestUrl = "https://melligold.com/api/v1/exchange/buy-sell-price/?symbol=XAU18&format=json";
+                } else if ("talasi".equals(requestSource)) {
+                    requestUrl = TALASI_API;
+                } else if ("wallgold".equals(requestSource)) {
+                    requestUrl = WALLGOLD_API;
                 } else {
                     requestUrl = DIGIKALA_API;
                 }
 
-                URL url =
-                        new URL(
-                                requestUrl
-                        );
+                StringBuilder response = new StringBuilder();
 
-                connection =
-                        (HttpURLConnection)
-                                url.openConnection();
+                if ("melligold".equals(requestSource)) {
+                    response.append(fetchMelliGoldResponse());
+                } else {
+                    URL url = new URL(requestUrl);
+                    connection = (HttpURLConnection) url.openConnection();
+                    connection.setRequestMethod("GET");
+                    connection.setConnectTimeout(5000);
+                    connection.setReadTimeout(5000);
+                    connection.setUseCaches(false);
 
-                connection.setRequestMethod(
-                        "GET"
-                );
-
-                connection.setConnectTimeout(
-                        5000
-                );
-
-                connection.setReadTimeout(
-                        5000
-                );
-
-                connection.setUseCaches(
-                        false
-                );
-
-                BufferedReader reader =
-                        new BufferedReader(
-                                new InputStreamReader(
-                                        connection.getInputStream()
-                                )
-                        );
-
-                StringBuilder response =
-                        new StringBuilder();
-
-                String line;
-
-                while ((line =
-                        reader.readLine()) != null) {
-
-                    response.append(line);
+                    try (BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(connection.getInputStream()))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            response.append(line);
+                        }
+                    }
                 }
-
-                reader.close();
 
                 String source =
                         requestSource;
@@ -2627,7 +3004,7 @@ if ("tgju".equals(source)) {
                                     response.toString()
                             );
 
-                    price = parsePrice(json);
+                    price = parsePrice(json, source);
                 }
 
                 if (!requestSource.equals(getSource())) {
@@ -2665,6 +3042,10 @@ if ("tgju".equals(source)) {
                         .apply();
 
                 MerGoldWidget.updateWidgets(
+                        this
+                );
+
+                MerGoldPremiumWidget.updateWidgets(
                         this
                 );
 
@@ -2820,6 +3201,251 @@ if ("tgju".equals(source)) {
         }).start();
     }
 
+
+    private void setupSourceManager() {
+        View button = findViewById(R.id.sourceManagerButton);
+        if (button != null) {
+            button.setOnClickListener(v -> showSourceManagerDialog());
+        }
+    }
+
+    private void applyVisibleSourceRows() {
+        String[] visible = getVisibleSources();
+
+        String[] ids = {
+                "digikala",
+                "milli",
+                "tgju",
+                "snappgold",
+                "topgold",
+                "melligold",
+                "talasi",
+                "wallgold"
+        };
+
+        int[] rowIds = {
+                R.id.digikalaCompareRow,
+                R.id.milliCompareRow,
+                R.id.tgjuCompareRow,
+                R.id.snappGoldCompareRow,
+                R.id.topGoldCompareRow,
+                R.id.melliGoldCompareRow,
+                R.id.talasiCompareRow,
+                R.id.wallGoldCompareRow
+        };
+
+        for (int i = 0; i < ids.length; i++) {
+            View row = findViewById(rowIds[i]);
+            if (row == null) {
+                continue;
+            }
+
+            boolean show = false;
+            for (String source : visible) {
+                if (ids[i].equals(source)) {
+                    show = true;
+                    break;
+                }
+            }
+
+            row.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private void showSourceManagerDialog() {
+        final boolean darkMode = getSharedPreferences(
+                "settings", MODE_PRIVATE
+        ).getBoolean("dark_mode", false);
+        final String[] ids = {
+                "digikala",
+                "milli",
+                "tgju",
+                "snappgold",
+                "topgold",
+                "melligold",
+                "talasi",
+                "wallgold"
+        };
+
+        final String[] names = {
+                "دیجی‌کالا",
+                "میلی",
+                "TGJU",
+                "اسنپ‌گلد",
+                "تاپ‌گلد",
+                "ملی‌گلد",
+                "طلاسی",
+                "وال‌گلد"
+        };
+
+        final boolean[] ready = {
+                true, true, true, true, true, true, true, true
+        };
+
+        java.util.LinkedHashSet<String> selected =
+                new java.util.LinkedHashSet<>();
+
+        for (String saved : getVisibleSources()) {
+            for (int i = 0; i < ids.length; i++) {
+                if (ready[i] && ids[i].equals(saved)) {
+                    selected.add(saved);
+                    break;
+                }
+            }
+        }
+
+        if (selected.size() != 4) {
+            selected.clear();
+            selected.add("digikala");
+            selected.add("milli");
+            selected.add("tgju");
+            selected.add("snappgold");
+        }
+
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        if (darkMode) {
+            content.setBackgroundColor(Color.rgb(32, 32, 32));
+        }
+        int horizontalPadding = (int) (20 * getResources().getDisplayMetrics().density);
+        int verticalPadding = (int) (12 * getResources().getDisplayMetrics().density);
+        content.setPadding(horizontalPadding, verticalPadding,
+                horizontalPadding, verticalPadding);
+
+        TextView description = new TextView(this);
+        description.setText(
+                "چهار منبع را برای نمایش در کارت مقایسه انتخاب کن. "
+                + "این تنظیمات منبع فعال دریافت قیمت را تغییر نمی‌دهد."
+        );
+        description.setTextSize(13);
+        if (darkMode) {
+            description.setTextColor(Color.rgb(245, 245, 245));
+        }
+        description.setPadding(0, 0, 0, verticalPadding);
+        content.addView(description);
+
+        final android.widget.CheckBox[] checks =
+                new android.widget.CheckBox[ids.length];
+
+        for (int i = 0; i < ids.length; i++) {
+            final int index = i;
+            android.widget.CheckBox check =
+                    new android.widget.CheckBox(this);
+
+            check.setText(names[i]);
+            check.setTextSize(14);
+            if (darkMode) {
+                check.setTextColor(Color.rgb(245, 245, 245));
+            }
+            check.setEnabled(ready[i]);
+            check.setChecked(ready[i] && selected.contains(ids[i]));
+
+            if (!ready[i]) {
+                check.setAlpha(0.55f);
+            }
+
+            checks[i] = check;
+            content.addView(
+                    check,
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+            );
+
+            check.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (!isChecked) {
+                    return;
+                }
+
+                int count = 0;
+                for (android.widget.CheckBox item : checks) {
+                    if (item != null && item.isChecked()) {
+                        count++;
+                    }
+                }
+
+                if (count > 4) {
+                    buttonView.setChecked(false);
+                    android.widget.Toast.makeText(
+                            MainActivity.this,
+                            "فقط چهار منبع قابل انتخاب است.",
+                            android.widget.Toast.LENGTH_SHORT
+                    ).show();
+                }
+            });
+        }
+
+        ScrollView scroll = new ScrollView(this);
+        if (darkMode) {
+            scroll.setBackgroundColor(Color.rgb(32, 32, 32));
+        }
+        scroll.setFillViewport(false);
+        scroll.addView(content);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("مدیریت منابع نمایشی")
+                .setView(scroll)
+                .setNegativeButton("انصراف", null)
+                .setPositiveButton("ذخیره", null)
+                .create();
+
+        dialog.setOnShowListener(ignored -> {
+            if (darkMode) {
+                android.view.Window window = dialog.getWindow();
+                if (window != null) {
+                    window.setBackgroundDrawable(
+                            new android.graphics.drawable.ColorDrawable(
+                                    Color.rgb(32, 32, 32)
+                            )
+                    );
+                }
+
+
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                        .setTextColor(Color.rgb(229, 199, 107));
+                dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
+                        .setTextColor(Color.rgb(200, 200, 200));
+            }
+
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                    .setOnClickListener(v -> {
+                        java.util.ArrayList<String> chosen =
+                                new java.util.ArrayList<>();
+
+                        for (int i = 0; i < checks.length; i++) {
+                            if (checks[i].isChecked() && ready[i]) {
+                                chosen.add(ids[i]);
+                            }
+                        }
+
+                        if (chosen.size() != 4) {
+                            android.widget.Toast.makeText(
+                                    MainActivity.this,
+                                    "برای ذخیره دقیقاً چهار منبع آماده انتخاب کن.",
+                                    android.widget.Toast.LENGTH_SHORT
+                            ).show();
+                            return;
+                        }
+
+                        if (!saveVisibleSources(chosen.toArray(new String[0]))) {
+                            android.widget.Toast.makeText(
+                                    MainActivity.this,
+                                    "ذخیره منابع انجام نشد.",
+                                    android.widget.Toast.LENGTH_SHORT
+                            ).show();
+                            return;
+                        }
+
+                        applyVisibleSourceRows();
+                        updateSourceComparison();
+                        dialog.dismiss();
+                    });
+        });
+
+        dialog.show();
+    }
+
     private void updateSourceComparison() {
 
         new Thread(() -> {
@@ -2827,12 +3453,7 @@ if ("tgju".equals(source)) {
             java.util.Map<String, Long> prices =
                     new java.util.HashMap<>();
 
-            String[] sources = {
-                    "digikala",
-                    "milli",
-                    "snappgold",
-                    "tgju"
-            };
+            String[] sources = getVisibleSources();
 
             for (String source : sources) {
 
@@ -2868,6 +3489,8 @@ if ("tgju".equals(source)) {
 
             runOnUiThread(() -> {
 
+                applyVisibleSourceRows();
+
                 updateComparisonText(
                         digikalaComparePrice,
                         prices.get("digikala"),
@@ -2890,6 +3513,30 @@ if ("tgju".equals(source)) {
                         tgjuComparePrice,
                         prices.get("tgju"),
                         prices.containsKey("tgju")
+                );
+
+                updateComparisonText(
+                        topGoldComparePrice,
+                        prices.get("topgold"),
+                        prices.containsKey("topgold")
+                );
+
+                updateComparisonText(
+                        melliGoldComparePrice,
+                        prices.get("melligold"),
+                        prices.containsKey("melligold")
+                );
+
+                updateComparisonText(
+                        talasiComparePrice,
+                        prices.get("talasi"),
+                        prices.containsKey("talasi")
+                );
+
+                updateComparisonText(
+                        wallGoldComparePrice,
+                        prices.get("wallgold"),
+                        prices.containsKey("wallgold")
                 );
 
                 long minPrice = Long.MAX_VALUE;
@@ -4207,6 +4854,28 @@ if ("tgju".equals(source)) {
                 primaryText,
                 secondaryText
         );
+
+        if (dark) {
+            if (voiceLanguagePersian != null) {
+                voiceLanguagePersian.setTextColor(
+                        Color.rgb(245, 245, 245)
+                );
+                voiceLanguagePersian.setTypeface(
+                        voiceLanguagePersian.getTypeface(),
+                        android.graphics.Typeface.BOLD
+                );
+            }
+
+            if (voiceLanguageEnglish != null) {
+                voiceLanguageEnglish.setTextColor(
+                        Color.rgb(245, 245, 245)
+                );
+                voiceLanguageEnglish.setTypeface(
+                        voiceLanguageEnglish.getTypeface(),
+                        android.graphics.Typeface.BOLD
+                );
+            }
+        }
     }
 
     private void applyColorsRecursive(
@@ -4231,12 +4900,49 @@ if ("tgju".equals(source)) {
             }
         }
 
+        boolean isSmartAnalysisText =
+                view.getId() == R.id.smartAnalysisText
+                || view.getId() == R.id.trendAnalysisText
+                || view.getId() == R.id.shortTermAnalysisText
+                || view.getId() == R.id.positionAnalysisText
+                || view.getId() == R.id.summaryAnalysisText
+                || view.getId() == R.id.marketStateAnalysisText
+                || view.getId() == R.id.marketScoreAnalysisText
+                || view.getId() == R.id.entryPositionAnalysisText
+                || view.getId() == R.id.entryReasonAnalysisText
+                || view.getId() == R.id.lastRecordAnalysisText;
+
+        boolean isTargetAreaText = false;
+
+        if (view instanceof TextView) {
+            android.view.ViewParent parent = view.getParent();
+
+            while (parent instanceof View) {
+                View parentView = (View) parent;
+                int parentId = parentView.getId();
+
+                if (parentId == R.id.highBox
+                        || parentId == R.id.lowBox
+                        || parentId == R.id.targetTabs) {
+                    isTargetAreaText = true;
+                    break;
+                }
+
+                parent = parentView.getParent();
+            }
+        }
+
         if (view instanceof TextView
+                && !(dark && (isSmartAnalysisText || isTargetAreaText))
                 && !(view instanceof RadioButton
                 && (view.getId() == R.id.digikalaRadio
                 || view.getId() == R.id.milliRadio
+                || view.getId() == R.id.melliGoldRadio
                 || view.getId() == R.id.tgjuRadio
-                || view.getId() == R.id.snappGoldRadio))) {
+                || view.getId() == R.id.snappGoldRadio
+                || view.getId() == R.id.topGoldRadio
+                || view.getId() == R.id.talasiRadio))
+                && view.getId() != R.id.sourceManagerButton) {
 
             TextView textView = (TextView) view;
 
@@ -4247,8 +4953,10 @@ if ("tgju".equals(source)) {
                 );
             }
 
-            int currentColor =
-                    textView.getCurrentTextColor();
+            Integer savedColor = originalTextColors.get(textView);
+            int currentColor = savedColor != null
+                    ? savedColor
+                    : textView.getCurrentTextColor();
 
             if (dark) {
 
@@ -4270,7 +4978,16 @@ if ("tgju".equals(source)) {
                             primaryText
                     );
 
-                } else if (currentColor == Color.rgb(53, 93, 40)
+                } else if (currentColor == Color.rgb(179, 139, 22)
+                        || currentColor == Color.rgb(107, 90, 32)
+                        || currentColor == Color.rgb(81, 69, 31)
+                        || currentColor == Color.rgb(118, 87, 13)) {
+
+                    textView.setTextColor(Color.rgb(229, 199, 107));
+
+                } else if (currentColor == Color.rgb(101, 112, 93)
+                        || currentColor == Color.rgb(63, 95, 50)
+                        || currentColor == Color.rgb(53, 93, 40)
                         || currentColor == Color.rgb(79, 126, 58)) {
 
                     textView.setTextColor(
@@ -4296,34 +5013,88 @@ if ("tgju".equals(source)) {
         }
 
         if (view instanceof EditText) {
+            EditText editText = (EditText) view;
+            int inputId = editText.getId();
 
-            EditText editText =
-                    (EditText) view;
+            boolean calculatorInput =
+                    inputId == R.id.madeWeightInput
+                    || inputId == R.id.madeWageInput
+                    || inputId == R.id.madeProfitInput
+                    || inputId == R.id.madeTaxInput
+                    || inputId == R.id.meltedWeightInput
+                    || inputId == R.id.meltedKaratInput
+                    || inputId == R.id.sellWeightInput
+                    || inputId == R.id.sellKaratInput
+                    || inputId == R.id.sellDeductionInput;
 
             if (dark) {
+                editText.setTextColor(primaryText);
+                editText.setHintTextColor(secondaryText);
+            }
+
+            if (inputId == R.id.amountInput) {
                 editText.setTextColor(
-                        primaryText
+                        dark ? primaryText : Color.rgb(41, 41, 41)
                 );
                 editText.setHintTextColor(
-                        secondaryText
+                        dark ? secondaryText : Color.rgb(181, 177, 168)
+                );
+            } else if (calculatorInput) {
+                editText.setBackgroundResource(
+                        dark
+                                ? R.drawable.target_input_dark
+                                : R.drawable.target_input
+                );
+                editText.setTextColor(
+                        dark ? primaryText : Color.rgb(41, 41, 41)
+                );
+                editText.setHintTextColor(
+                        dark ? secondaryText : Color.rgb(110, 110, 110)
                 );
             }
         }
 
+        if (view.getId() == R.id.voiceAlertCard) {
+            view.setBackgroundResource(
+                    dark
+                            ? R.drawable.voice_alert_card_dark
+                            : R.drawable.card_premium_gold
+            );
+        }
+
         if (view instanceof Button) {
 
-            Button button =
-                    (Button) view;
+            Button button = (Button) view;
+            int buttonId = button.getId();
 
-            if (dark) {
-                if (button.getId() == R.id.saveButton) {
-                    button.setTextColor(
-                            Color.rgb(255, 255, 255)
-                    );
+            boolean chartButton =
+                    buttonId == R.id.chartLineButton
+                    || buttonId == R.id.chartCandleButton
+                    || buttonId == R.id.dayButton
+                    || buttonId == R.id.weekButton
+                    || buttonId == R.id.monthButton
+                    || buttonId == R.id.days7Button;
+
+            if (chartButton) {
+                button.setBackgroundResource(
+                        dark
+                                ? R.drawable.chart_segment_button_dark
+                                : R.drawable.chart_segment_button
+                );
+
+                button.setTextColor(
+                        getResources().getColorStateList(
+                                dark
+                                        ? R.color.chart_control_text_dark
+                                        : R.color.chart_control_text_light,
+                                getTheme()
+                        )
+                );
+            } else if (dark) {
+                if (buttonId == R.id.saveButton) {
+                    button.setTextColor(Color.rgb(255, 255, 255));
                 } else {
-                    button.setTextColor(
-                            Color.rgb(34, 34, 34)
-                    );
+                    button.setTextColor(Color.rgb(34, 34, 34));
                 }
             }
         }
@@ -4338,9 +5109,24 @@ if ("tgju".equals(source)) {
 
                 if (id == R.id.digikalaRadio
                         || id == R.id.milliRadio
+                        || id == R.id.melliGoldRadio
                         || id == R.id.tgjuRadio
-                        || id == R.id.snappGoldRadio) {
+                        || id == R.id.snappGoldRadio
+                        || id == R.id.topGoldRadio
+                        || id == R.id.talasiRadio
+                        || id == R.id.wallGoldRadio) {
 
+                    radioButton.setTypeface(
+                            radioButton.getTypeface(),
+                            android.graphics.Typeface.BOLD
+                    );
+
+                } else if (id == R.id.voiceLanguagePersian
+                        || id == R.id.voiceLanguageEnglish) {
+
+                    radioButton.setTextColor(
+                            Color.rgb(245, 245, 245)
+                    );
                     radioButton.setTypeface(
                             radioButton.getTypeface(),
                             android.graphics.Typeface.BOLD
@@ -4348,6 +5134,13 @@ if ("tgju".equals(source)) {
 
                 } else {
                     radioButton.setTextColor(primaryText);
+                }
+            } else if (radioButton.getId() == R.id.voiceLanguagePersian
+                    || radioButton.getId() == R.id.voiceLanguageEnglish) {
+
+                Integer originalColor = originalTextColors.get(radioButton);
+                if (originalColor != null) {
+                    radioButton.setTextColor(originalColor);
                 }
             }
         }
@@ -4376,18 +5169,26 @@ if ("tgju".equals(source)) {
             }
         }
 
-        if (view.getId() == R.id.priceCard
+        if (view.getId() == R.id.chartCard) {
+            view.setBackgroundResource(
+                    dark
+                            ? R.drawable.chart_card_premium_dark
+                            : R.drawable.chart_card_premium
+            );
+        } else if (view.getId() == R.id.chartTypeLayout
+                || view.getId() == R.id.rangeLayout) {
+            view.setBackgroundResource(
+                    dark
+                            ? R.drawable.chart_segment_container_dark
+                            : R.drawable.chart_segment_container
+            );
+        } else if (view.getId() == R.id.priceCard
                 || view.getId() == R.id.sourceCard
                 || view.getId() == R.id.statsCard
-                || view.getId() == R.id.chartCard
-                || view.getId() == R.id.comparisonCard
-                || view.getId() == R.id.amountCard
-                ) {
+                || view.getId() == R.id.comparisonCard) {
 
             view.setBackgroundColor(
-                    dark
-                            ? cardBackground
-                            : Color.WHITE
+                    dark ? cardBackground : Color.WHITE
             );
         }
     }

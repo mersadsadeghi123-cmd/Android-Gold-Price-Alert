@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingLeft="16dp"
+    android:paddingTop="16dp"
+    android:paddingRight="16dp"
+    android:paddingBottom="6dp"
+    android:background="@drawable/mergold_widget_glass"
+    android:layoutDirection="rtl">
+
+    <TextView
+        android:id="@+id/widgetTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🪙 MrGold"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        android:textColor="#B88A16"
+        android:gravity="center"/>
+
+    <TextView
+        android:id="@+id/widgetSubtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="طلای ۱۸ عیار"
+        android:textSize="11sp"
+        android:textColor="#777777"
+        android:gravity="center"
+        android:layout_marginBottom="4dp"/>
+
+    <TextView
+        android:id="@+id/widgetStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="● آنلاین"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:textColor="#2E7D32"
+        android:gravity="center"/>
+
+    <TextView
+        android:id="@+id/widgetPrice"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="در حال دریافت..."
+        android:textSize="25sp"
+        android:textStyle="bold"
+        android:textColor="#222222"
+        android:gravity="center"
+        android:singleLine="true"
+        android:layout_marginTop="7dp"/>
+
+    <TextView
+        android:id="@+id/widgetChange"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="—"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="#757575"
+        android:gravity="center"
+        android:layout_marginTop="2dp"/>
+
+    <ImageView
+        android:id="@+id/widgetChart"
+        android:layout_width="match_parent"
+        android:layout_height="62dp"
+        android:layout_marginTop="7dp"
+        android:scaleType="fitCenter"
+        android:contentDescription="نمودار قیمت"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="5dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="سقف"
+                android:textSize="10sp"
+                android:textColor="#777777"/>
+
+            <TextView
+                android:id="@+id/widgetHigh"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="—"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#444444"/>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="کف"
+                android:textSize="10sp"
+                android:textColor="#777777"/>
+
+            <TextView
+                android:id="@+id/widgetLow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="—"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#444444"/>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="5dp">
+
+        <TextView
+            android:id="@+id/widgetHighTarget"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🔺 هدف بالا: —"
+            android:textSize="10sp"
+            android:textColor="#756943"
+            android:gravity="center"/>
+
+        <TextView
+            android:id="@+id/widgetLowTarget"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🔻 هدف پایین: —"
+            android:textSize="10sp"
+            android:textColor="#756943"
+            android:gravity="center"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="5dp">
+
+        <TextView
+            android:id="@+id/widgetSource"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="منبع: —"
+            android:textSize="10sp"
+            android:textColor="#777777"
+            android:gravity="start"/>
+
+        <TextView
+            android:id="@+id/widgetRefresh"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="↻ بروزرسانی"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:textColor="#B88A16"
+            android:gravity="center"
+            android:paddingLeft="7dp"
+            android:paddingRight="7dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"/>
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widgetLastUpdate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="آخرین بروزرسانی: —"
+        android:textSize="9sp"
+        android:textColor="#999999"
+        android:gravity="center"
+        android:layout_marginTop="2dp"/>
+
+</LinearLayout>

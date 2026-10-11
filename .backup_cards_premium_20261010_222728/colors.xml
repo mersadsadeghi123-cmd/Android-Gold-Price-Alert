@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="mergold_main_background">#F6F4EF</color>
+    <color name="comparison_price_text">#333333</color>
+    <color name="comparison_diff_text">#756943</color>
+
+    <color name="dark_control_text">#625D52</color>
+    <color name="dark_control_text_secondary">#777777</color>
+    <color name="dark_control_bg">#F7F6F2</color>
+    <color name="dark_control_bg_pressed">#EEE8D7</color>
+    <color name="dark_control_stroke">#E7E2D6</color>
+    <color name="dark_control_selected_bg">#F6E9B8</color>
+    <color name="dark_control_selected_stroke">#D5B95D</color>
+    <color name="dark_chart_stats">#777777</color>
+    <color name="dark_chart_analysis">#555555</color>
+    <color name="dark_source_title">#756943</color>
+
+    <color name="targets_title_text">#202020</color>
+    <color name="targets_secondary_text">#8A8A8A</color>
+    <color name="targets_body_text">#777777</color>
+    <color name="targets_label_text">#555555</color>
+    <color name="targets_high_text">#355D28</color>
+    <color name="targets_high_accent">#4F7E3A</color>
+    <color name="targets_low_text">#8A3933</color>
+    <color name="targets_low_accent">#A34A43</color>
+    <color name="targets_inner_high_bg">#FAF9F6</color>
+    <color name="targets_inner_low_bg">#FCF8F7</color>
+    <color name="targets_tabs_bg">#F3F1EC</color>
+    <color name="targets_voice_title">#222222</color>
+
+    <color name="voice_title_text">#222222</color>
+    <color name="voice_secondary_text">#777777</color>
+    <color name="voice_label_text">#555555</color>
+</resources>

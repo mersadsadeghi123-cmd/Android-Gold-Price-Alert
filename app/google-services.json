@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "517203148649",
+    "project_id": "mrgold1",
+    "storage_bucket": "mrgold1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:517203148649:android:a5087d65b304f522e807f8",
+        "android_client_info": {
+          "package_name": "com.mersad.gold18"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8EvMQ9MKv6WIw23aW_FU-KmcBA0s4aBk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

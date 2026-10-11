@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services'
+}
+
+android {
+    namespace 'com.mersad.gold18'
+
+    signingConfigs {
+        release {
+            storeFile file('../merGold-release.jks')
+            storePassword System.getenv("MERGOLD_STORE_PASSWORD")
+            keyAlias 'mrgold'
+            keyPassword System.getenv("MERGOLD_KEY_PASSWORD")
+        }
+    }
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.mersad.gold18'
+        minSdk 23
+        targetSdk 36
+        versionCode 3
+        versionName '1.2'
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+}
+
+dependencies {
+    implementation "com.google.firebase:firebase-messaging:24.1.2"
+}
+

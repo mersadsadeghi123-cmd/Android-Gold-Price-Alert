@@ -453,11 +453,11 @@ public class MerGoldWidget extends AppWidgetProvider {
                             phase + 260f,
                             0,
                             new int[]{
-                                    0xFF806000,
+                                    0xFFC49A00,
                                     0xFFD4AF37,
                                     0xFFFFF1A8,
                                     0xFFD4AF37,
-                                    0xFF806000
+                                    0xFFC49A00
                             },
                             new float[]{
                                     0.0f,
@@ -473,7 +473,7 @@ public class MerGoldWidget extends AppWidgetProvider {
 
         } else {
 
-            paint.setColor(0xFF806000);
+            paint.setColor(0xFFC49A00);
         }
 
         canvas.drawText(
@@ -492,97 +492,128 @@ public class MerGoldWidget extends AppWidgetProvider {
             long currentPrice) {
 
         try {
-            JSONArray history =
-                    PriceHistory.get(
-                            context,
-                            sourceKey
-                    );
+            JSONArray history = PriceHistory.get(context, sourceKey);
 
-            if (history.length() < 2) {
+            if (history == null || history.length() < 2) {
                 return null;
             }
 
             int width = 600;
             int height = 124;
 
-            Bitmap bitmap =
-                    Bitmap.createBitmap(
-                            width,
-                            height,
-                            Bitmap.Config.ARGB_8888
-                    );
-
+            Bitmap bitmap = Bitmap.createBitmap(
+                    width, height, Bitmap.Config.ARGB_8888
+            );
             Canvas canvas = new Canvas(bitmap);
 
-            Paint paint =
-                    new Paint(Paint.ANTI_ALIAS_FLAG);
+            long min = currentPrice;
+            long max = currentPrice;
 
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(5f);
-            paint.setStrokeCap(Paint.Cap.ROUND);
-            paint.setStrokeJoin(Paint.Join.ROUND);
-            paint.setColor(0xFFB88A16);
-
-            long min = Long.MAX_VALUE;
-            long max = Long.MIN_VALUE;
-
-            for (int i = 0;
-                 i < history.length();
-                 i++) {
-
-                long value =
-                        history.getJSONObject(i)
-                                .getLong("price");
-
+            for (int i = 0; i < history.length(); i++) {
+                long value = history.getJSONObject(i).getLong("price");
                 min = Math.min(min, value);
                 max = Math.max(max, value);
             }
 
-            min = Math.min(min, currentPrice);
-            max = Math.max(max, currentPrice);
-
-            if (max <= min) {
-                return null;
-            }
-            float left = 8f;
-            float right = width - 8f;
-            float top = 10f;
-            float bottom = height - 10f;
-
-            Path path = new Path();
-
-            int count = history.length();
-
-            for (int i = 0;
-                 i < count;
-                 i++) {
-
-                long value =
-                        history.getJSONObject(i)
-                                .getLong("price");
-
-                float x =
-                        left +
-                        ((float) i / (count - 1)) *
-                        (right - left);
-
-                float y =
-                        bottom -
-                        ((float) (value - min) /
-                        (float) (max - min)) *
-                        (bottom - top);
-
-                if (i == 0) {
-                    path.moveTo(x, y);
-                } else {
-                    path.lineTo(x, y);
-                }
+            if (max == min) {
+                long padding = Math.max(1L, Math.abs(max) / 10000L);
+                min -= padding;
+                max += padding;
             }
 
-            canvas.drawPath(
-                    path,
-                    paint
-            );
+            float left = 10f;
+            float right = width - 12f;
+            float top = 14f;
+            float bottom = height - 14f;
+            float plotHeight = bottom - top;
+            float plotWidth = right - left;
+
+            Paint grid = new Paint(Paint.ANTI_ALIAS_FLAG);
+            grid.setColor(0x2677838C);
+            grid.setStrokeWidth(1.5f);
+
+            for (int i = 0; i < 4; i++) {
+                float y = top + plotHeight * i / 3f;
+                canvas.drawLine(left, y, right, y, grid);
+            }
+
+            int historyCount = history.length();
+            int count = historyCount + 1;
+            float[] xs = new float[count];
+            float[] ys = new float[count];
+
+            for (int i = 0; i < count; i++) {
+                long value = i == historyCount
+                        ? currentPrice
+                        : history.getJSONObject(i).getLong("price");
+
+                xs[i] = left + (float) i / (count - 1) * plotWidth;
+                ys[i] = bottom
+                        - ((float) (value - min) / (float) (max - min))
+                        * plotHeight;
+            }
+
+            Path line = new Path();
+            line.moveTo(xs[0], ys[0]);
+
+            for (int i = 1; i < count; i++) {
+                float midX = (xs[i - 1] + xs[i]) / 2f;
+                float midY = (ys[i - 1] + ys[i]) / 2f;
+                line.quadTo(xs[i - 1], ys[i - 1], midX, midY);
+            }
+
+            line.lineTo(xs[count - 1], ys[count - 1]);
+
+            Path area = new Path(line);
+            area.lineTo(xs[count - 1], bottom);
+            area.lineTo(xs[0], bottom);
+            area.close();
+
+            Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+            fill.setStyle(Paint.Style.FILL);
+            fill.setShader(new LinearGradient(
+                    0, top, 0, bottom,
+                    0x55E5B94B, 0x00E5B94B,
+                    Shader.TileMode.CLAMP
+            ));
+            canvas.drawPath(area, fill);
+
+            Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
+            glow.setStyle(Paint.Style.STROKE);
+            glow.setStrokeWidth(9f);
+            glow.setStrokeCap(Paint.Cap.ROUND);
+            glow.setStrokeJoin(Paint.Join.ROUND);
+            glow.setColor(0x44E5B94B);
+            glow.setShadowLayer(7f, 0f, 0f, 0x88E5B94B);
+            canvas.drawPath(line, glow);
+
+            Paint goldLine = new Paint(Paint.ANTI_ALIAS_FLAG);
+            goldLine.setStyle(Paint.Style.STROKE);
+            goldLine.setStrokeWidth(4f);
+            goldLine.setStrokeCap(Paint.Cap.ROUND);
+            goldLine.setStrokeJoin(Paint.Join.ROUND);
+            goldLine.setShader(new LinearGradient(
+                    left, top, right, bottom,
+                    0xFFFFE8A0, 0xFFE5B94B,
+                    Shader.TileMode.CLAMP
+            ));
+            canvas.drawPath(line, goldLine);
+
+            float lastX = xs[count - 1];
+            float lastY = ys[count - 1];
+
+            Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
+            halo.setColor(0x44E5B94B);
+            canvas.drawCircle(lastX, lastY, 10f, halo);
+
+            Paint dot = new Paint(Paint.ANTI_ALIAS_FLAG);
+            dot.setColor(0xFFE5B94B);
+            dot.setStyle(Paint.Style.FILL);
+            canvas.drawCircle(lastX, lastY, 4.5f, dot);
+
+            Paint center = new Paint(Paint.ANTI_ALIAS_FLAG);
+            center.setColor(0xFFFFFFFF);
+            canvas.drawCircle(lastX, lastY, 2f, center);
 
             return bitmap;
 
@@ -590,6 +621,7 @@ public class MerGoldWidget extends AppWidgetProvider {
             return null;
         }
     }
+
     private static CharSequence viewsToChangeText(
             long change,
             String percentText) {
@@ -629,11 +661,11 @@ public class MerGoldWidget extends AppWidgetProvider {
         int color;
 
         if (change > 0) {
-            color = 0xFF2E8B57;
+            color = 0xFF69F0AE;
         } else if (change < 0) {
-            color = 0xFFC62828;
+            color = 0xFFFF8A80;
         } else {
-            color = 0xFF806000;
+            color = 0xFFC49A00;
         }
 
         result.setSpan(

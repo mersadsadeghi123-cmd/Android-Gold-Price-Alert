@@ -20,6 +20,10 @@ public class PriceHistory {
 
     private static String getKey(String source) {
 
+        if ("digikala".equals(source)) {
+            return "prices_digikala";
+        }
+
         if ("milli".equals(source)) {
             return "prices_milli";
         }
@@ -32,7 +36,25 @@ public class PriceHistory {
             return "prices_tgju";
         }
 
-        return "prices_digikala";
+        if ("topgold".equals(source)) {
+            return "prices_topgold";
+        }
+
+        if ("melligold".equals(source)) {
+            return "prices_melligold";
+        }
+
+        if ("talasi".equals(source)) {
+            return "prices_talasi";
+        }
+
+        if ("wallgold".equals(source)) {
+            return "prices_wallgold";
+        }
+
+        throw new IllegalArgumentException(
+                "Unknown price history source: " + source
+        );
     }
 
     public static synchronized void add(

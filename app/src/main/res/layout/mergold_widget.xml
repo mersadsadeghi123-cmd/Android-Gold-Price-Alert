@@ -19,7 +19,7 @@
         android:text="🪙 MrGold"
         android:textSize="17sp"
         android:textStyle="bold"
-        android:textColor="#B88A16"
+        android:textColor="#FFD54F"
         android:gravity="center"/>
 
     <TextView
@@ -28,7 +28,7 @@
         android:layout_height="wrap_content"
         android:text="طلای ۱۸ عیار"
         android:textSize="11sp"
-        android:textColor="#777777"
+        android:textColor="#D0D0D0"
         android:gravity="center"
         android:layout_marginBottom="4dp"/>
 
@@ -39,7 +39,7 @@
         android:text="● آنلاین"
         android:textSize="11sp"
         android:textStyle="bold"
-        android:textColor="#2E7D32"
+        android:textColor="#69F0AE"
         android:gravity="center"/>
 
     <ImageView
@@ -58,7 +58,7 @@
         android:text="—"
         android:textSize="14sp"
         android:textStyle="bold"
-        android:textColor="#757575"
+        android:textColor="#D0D0D0"
         android:gravity="center"
         android:layout_marginTop="2dp"/>
 
@@ -88,7 +88,7 @@
                 android:layout_height="wrap_content"
                 android:text="سقف"
                 android:textSize="10sp"
-                android:textColor="#777777"/>
+                android:textColor="#D0D0D0"/>
 
             <TextView
                 android:id="@+id/widgetHigh"
@@ -97,7 +97,7 @@
                 android:text="—"
                 android:textSize="12sp"
                 android:textStyle="bold"
-                android:textColor="#444444"/>
+                android:textColor="#FFFFFF"/>
 
         </LinearLayout>
 
@@ -113,7 +113,7 @@
                 android:layout_height="wrap_content"
                 android:text="کف"
                 android:textSize="10sp"
-                android:textColor="#777777"/>
+                android:textColor="#D0D0D0"/>
 
             <TextView
                 android:id="@+id/widgetLow"
@@ -122,7 +122,7 @@
                 android:text="—"
                 android:textSize="12sp"
                 android:textStyle="bold"
-                android:textColor="#444444"/>
+                android:textColor="#FFFFFF"/>
 
         </LinearLayout>
 
@@ -141,7 +141,7 @@
             android:layout_weight="1"
             android:text="🔺 هدف بالا: —"
             android:textSize="10sp"
-            android:textColor="#756943"
+            android:textColor="#E6D7A8"
             android:gravity="center"/>
 
         <TextView
@@ -151,7 +151,7 @@
             android:layout_weight="1"
             android:text="🔻 هدف پایین: —"
             android:textSize="10sp"
-            android:textColor="#756943"
+            android:textColor="#E6D7A8"
             android:gravity="center"/>
 
     </LinearLayout>
@@ -170,7 +170,7 @@
             android:layout_weight="1"
             android:text="منبع: —"
             android:textSize="10sp"
-            android:textColor="#777777"
+            android:textColor="#D0D0D0"
             android:gravity="start"/>
 
         <TextView
@@ -180,7 +180,7 @@
             android:text="↻ بروزرسانی"
             android:textSize="10sp"
             android:textStyle="bold"
-            android:textColor="#B88A16"
+            android:textColor="#FFD54F"
             android:gravity="center"
             android:paddingLeft="7dp"
             android:paddingRight="7dp"
@@ -195,7 +195,7 @@
         android:layout_height="wrap_content"
         android:text="آخرین بروزرسانی: —"
         android:textSize="9sp"
-        android:textColor="#999999"
+        android:textColor="#BDBDBD"
         android:gravity="center"
         android:layout_marginTop="2dp"/>
 

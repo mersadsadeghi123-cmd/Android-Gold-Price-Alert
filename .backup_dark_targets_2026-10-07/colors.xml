@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="mergold_main_background">#121212</color>
+    <color name="comparison_price_text">#F2F2F2</color>
+    <color name="comparison_diff_text">#E6C85C</color>
+
+    <color name="dark_control_text">#222222</color>
+    <color name="dark_control_text_secondary">#D8D4C8</color>
+    <color name="dark_control_bg">#242424</color>
+    <color name="dark_control_bg_pressed">#303030</color>
+    <color name="dark_control_stroke">#4A4538</color>
+    <color name="dark_control_selected_bg">#4A3F1F</color>
+    <color name="dark_control_selected_stroke">#C9A93F</color>
+    <color name="dark_chart_stats">#D0CDC5</color>
+    <color name="dark_chart_analysis">#D8D4C8</color>
+    <color name="dark_source_title">#E6C85C</color>
+</resources>

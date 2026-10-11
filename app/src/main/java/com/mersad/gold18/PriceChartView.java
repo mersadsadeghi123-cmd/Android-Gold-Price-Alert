@@ -2,6 +2,8 @@ package com.mersad.gold18;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.LinearGradient;
+import android.graphics.Shader;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Typeface;
@@ -23,6 +25,7 @@ public class PriceChartView extends View {
     private JSONArray data = new JSONArray();
 
     private final Paint linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint pointPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -143,6 +146,13 @@ public class PriceChartView extends View {
         linePaint.setStrokeCap(Paint.Cap.ROUND);
         linePaint.setStrokeJoin(Paint.Join.ROUND);
         linePaint.setColor(GOLD);
+
+        glowPaint.setStyle(Paint.Style.STROKE);
+        glowPaint.setStrokeWidth(13f);
+        glowPaint.setStrokeCap(Paint.Cap.ROUND);
+        glowPaint.setStrokeJoin(Paint.Join.ROUND);
+        glowPaint.setColor(0x55D4AF37);
+        glowPaint.setShadowLayer(10f, 0f, 0f, 0x99D4AF37);
 
         gridPaint.setStyle(Paint.Style.STROKE);
         gridPaint.setStrokeWidth(1f);
@@ -378,6 +388,17 @@ public class PriceChartView extends View {
             );
         }
 
+        Paint verticalGridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        verticalGridPaint.setStyle(Paint.Style.STROKE);
+        verticalGridPaint.setStrokeWidth(1f);
+        verticalGridPaint.setColor(
+                darkMode ? 0x227F7F7F : 0x1A777777
+        );
+        for (int i = 1; i < 5; i++) {
+            float x = left + chartWidth * i / 5f;
+            canvas.drawLine(x, top, x, bottom, verticalGridPaint);
+        }
+
         float candleSlot =
                 chartWidth / Math.max(1, candles.size());
 
@@ -393,14 +414,17 @@ public class PriceChartView extends View {
         Paint wickPaint =
                 new Paint(Paint.ANTI_ALIAS_FLAG);
 
-        wickPaint.setStrokeWidth(2.2f);
+        wickPaint.setStrokeWidth(2.0f);
 
         Paint bodyPaint =
                 new Paint(Paint.ANTI_ALIAS_FLAG);
 
-        bodyPaint.setStyle(
-                Paint.Style.FILL
-        );
+        bodyPaint.setStyle(Paint.Style.FILL);
+
+        Paint bodyHighlightPaint =
+                new Paint(Paint.ANTI_ALIAS_FLAG);
+        bodyHighlightPaint.setStyle(Paint.Style.STROKE);
+        bodyHighlightPaint.setStrokeWidth(1.0f);
 
         for (int i = 0; i < candles.size(); i++) {
 
@@ -453,14 +477,21 @@ public class PriceChartView extends View {
                                 : 0xFFE05252;
             }
 
-            wickPaint.setColor(color);
+            int wickColor = darkMode
+                    ? (rising ? 0xFF8BE5A0 : 0xFFFF9292)
+                    : (rising ? 0xFF238A45 : 0xFFCB3939);
+
+            wickPaint.setColor(wickColor);
             bodyPaint.setColor(color);
+            bodyHighlightPaint.setColor(
+                    darkMode
+                            ? (rising ? 0xFF9AEBAE : 0xFFFFA0A0)
+                            : (rising ? 0xFF65C77C : 0xFFEF7777)
+            );
 
             canvas.drawLine(
-                    x,
-                    highY,
-                    x,
-                    lowY,
+                    x, highY,
+                    x, lowY,
                     wickPaint
             );
 
@@ -481,12 +512,24 @@ public class PriceChartView extends View {
                         bodyTop + 3f;
             }
 
-            canvas.drawRect(
+            float radius = Math.min(3.5f, bodyWidth / 4f);
+
+            canvas.drawRoundRect(
                     x - bodyWidth / 2f,
                     bodyTop,
                     x + bodyWidth / 2f,
                     bodyBottom,
+                    radius, radius,
                     bodyPaint
+            );
+
+            canvas.drawRoundRect(
+                    x - bodyWidth / 2f,
+                    bodyTop,
+                    x + bodyWidth / 2f,
+                    bodyBottom,
+                    radius, radius,
+                    bodyHighlightPaint
             );
         }
 
@@ -542,15 +585,14 @@ public class PriceChartView extends View {
                     new Paint(Paint.ANTI_ALIAS_FLAG);
 
             ring.setStyle(Paint.Style.STROKE);
-            ring.setStrokeWidth(2f);
-            ring.setColor(candleColor);
-
-            canvas.drawCircle(
-                    x,
-                    closeY,
-                    8f,
-                    ring
+            ring.setStrokeWidth(2.5f);
+            ring.setColor(
+                    darkMode
+                            ? 0xFFFFD966
+                            : 0xFFB8892A
             );
+
+            canvas.drawCircle(x, closeY, 11f, ring);
 
             float density =
                     getResources()
@@ -604,8 +646,15 @@ public class PriceChartView extends View {
 
             box.setColor(
                     darkMode
-                            ? 0xFF292929
-                            : 0xFFFDF8E8
+                            ? 0xFF202020
+                            : 0xFFFFF8E5
+            );
+
+            box.setShadowLayer(
+                    7f * density,
+                    0f,
+                    2f * density,
+                    darkMode ? 0x66000000 : 0x228A6414
             );
 
             canvas.drawRoundRect(
@@ -617,13 +666,18 @@ public class PriceChartView extends View {
                     12f * density,
                     box
             );
+            box.clearShadowLayer();
 
             Paint border =
                     new Paint(Paint.ANTI_ALIAS_FLAG);
 
             border.setStyle(Paint.Style.STROKE);
             border.setStrokeWidth(1.5f * density);
-            border.setColor(candleColor);
+            border.setColor(
+                    darkMode
+                            ? (up ? 0xFF8BE5A0 : 0xFFFF9292)
+                            : (up ? 0xFF238A45 : 0xFFCB3939)
+            );
 
             canvas.drawRoundRect(
                     boxLeft,
@@ -639,10 +693,10 @@ public class PriceChartView extends View {
                     boxLeft + (8f * density);
 
             float titleSize =
-                    10f * scaledDensity;
+                    11f * scaledDensity;
 
             float valueSize =
-                    8f * scaledDensity;
+                    8.5f * scaledDensity;
 
             float lineGap =
                     12f * density;
@@ -655,7 +709,11 @@ public class PriceChartView extends View {
             );
 
             textPaint.setTextSize(titleSize);
-            textPaint.setColor(candleColor);
+            textPaint.setColor(
+                    darkMode
+                            ? (up ? 0xFF8BE5A0 : 0xFFFF9292)
+                            : (up ? 0xFF238A45 : 0xFFCB3939)
+            );
 
             float titleWidth =
                     textPaint.measureText(
@@ -827,7 +885,9 @@ public class PriceChartView extends View {
             return;
         }
 
-        canvas.drawColor(0xFFFFFFFF);
+        canvas.drawColor(
+                darkMode ? 0xFF171717 : 0xFFFFFFFF
+        );
 
         if (data.length() == 0) {
 
@@ -967,8 +1027,20 @@ public class PriceChartView extends View {
             );
         }
 
+        Paint verticalGridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        verticalGridPaint.setStyle(Paint.Style.STROKE);
+        verticalGridPaint.setStrokeWidth(1f);
+        verticalGridPaint.setColor(
+                darkMode ? 0x227F7F7F : 0x1A777777
+        );
+        for (int i = 1; i < 5; i++) {
+            float x = left + chartWidth * i / 5f;
+            canvas.drawLine(x, top, x, bottom, verticalGridPaint);
+        }
+
         path.reset();
         fillPath.reset();
+        Path premiumLinePath = new Path();
 
         float lastX = left;
         float lastY = bottom;
@@ -1017,6 +1089,7 @@ public class PriceChartView extends View {
 
                 if (i == 0) {
 
+                    premiumLinePath.moveTo(x, y);
                     path.moveTo(x, y);
 
                     fillPath.moveTo(
@@ -1030,6 +1103,8 @@ public class PriceChartView extends View {
                     );
 
                 } else {
+
+                    premiumLinePath.lineTo(x, y);
 
                     JSONObject previousItem =
                             data.getJSONObject(i - 1);
@@ -1065,38 +1140,7 @@ public class PriceChartView extends View {
                             bottom -
                             previousNormalized * chartHeight;
 
-                    if (price > previousPrice) {
-
-                        linePaint.setColor(
-                                darkMode
-                                        ? 0xFF63C174
-                                        : 0xFF3FAE5A
-                        );
-
-                    } else if (price < previousPrice) {
-
-                        linePaint.setColor(
-                                darkMode
-                                        ? 0xFFFF6B6B
-                                        : 0xFFE05252
-                        );
-
-                    } else {
-
-                        linePaint.setColor(
-                                darkMode
-                                        ? 0xFFFFD966
-                                        : GOLD_DARK
-                        );
-                    }
-
-                    canvas.drawLine(
-                            previousX,
-                            previousY,
-                            x,
-                            y,
-                            linePaint
-                    );
+                    // رسم خط طلایی یکپارچه پس از تکمیل سطح گرادیان
 
                     fillPath.lineTo(
                             x,
@@ -1119,25 +1163,99 @@ public class PriceChartView extends View {
 
         fillPath.close();
 
-        canvas.drawPath(
-                fillPath,
-                fillPaint
-        );
+        // هاله طلایی زیر منحنی؛ گرادیان هر بخش از خود خط به پایین محو می‌شود
+        fillPaint.setStyle(Paint.Style.FILL);
 
-        // حلقه اطراف نقطه آخر
-        canvas.drawCircle(
-                lastX,
-                lastY,
-                7f,
-                pointRingPaint
-        );
+        for (int i = 1; i < count; i++) {
+            try {
+                JSONObject previousItem = data.getJSONObject(i - 1);
+                JSONObject currentItem = data.getJSONObject(i);
 
-        canvas.drawCircle(
-                lastX,
-                lastY,
-                4f,
-                pointPaint
+                long previousPrice = previousItem.getLong("price");
+                long currentPrice = currentItem.getLong("price");
+
+                float x1 = left + chartWidth * (i - 1) / (count - 1f);
+                float x2 = left + chartWidth * i / (count - 1f);
+
+                float y1 = bottom
+                        - ((float) (previousPrice - minPrice)
+                        / (float) (maxPrice - minPrice)) * chartHeight;
+
+                float y2 = bottom
+                        - ((float) (currentPrice - minPrice)
+                        / (float) (maxPrice - minPrice)) * chartHeight;
+
+                float gradientStartY = Math.max(
+                        top,
+                        Math.min(bottom - 1f, (y1 + y2) / 2f)
+                );
+
+                Path segmentFillPath = new Path();
+                segmentFillPath.moveTo(x1, y1);
+                segmentFillPath.lineTo(x2, y2);
+                segmentFillPath.lineTo(x2, bottom);
+                segmentFillPath.lineTo(x1, bottom);
+                segmentFillPath.close();
+
+                fillPaint.setShader(
+                        new LinearGradient(
+                                0f,
+                                gradientStartY,
+                                0f,
+                                bottom,
+                                darkMode
+                                        ? new int[]{
+                                                0xB3FFD966,
+                                                0x55D4AF37,
+                                                0x00303030
+                                        }
+                                        : new int[]{
+                                                0x99E7BE55,
+                                                0x44D4AF37,
+                                                0x00FFFFFF
+                                        },
+                                new float[]{0f, 0.38f, 1f},
+                                Shader.TileMode.CLAMP
+                        )
+                );
+
+                canvas.drawPath(segmentFillPath, fillPaint);
+                fillPaint.setShader(null);
+
+            } catch (Exception ignored) {
+            }
+        }
+
+        // خط طلایی شارپ روی گرادیان
+        glowPaint.setStrokeWidth(15f);
+        glowPaint.setColor(
+                darkMode ? 0x66FFD966 : 0x55D4AF37
         );
+        canvas.drawPath(premiumLinePath, glowPaint);
+
+        linePaint.setColor(
+                darkMode ? 0xFFFFE08A : 0xFFB8892A
+        );
+        linePaint.setStrokeWidth(4f);
+        linePaint.setShadowLayer(
+                darkMode ? 5f : 3f,
+                0f,
+                0f,
+                darkMode ? 0x99FFD966 : 0x66D4AF37
+        );
+        canvas.drawPath(premiumLinePath, linePaint);
+        linePaint.clearShadowLayer();
+
+        // نشانگر برجسته قیمت آخر
+        Paint lastHaloPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        lastHaloPaint.setColor(darkMode ? 0x44FFD966 : 0x33D4AF37);
+        canvas.drawCircle(lastX, lastY, 18f, lastHaloPaint);
+
+        pointRingPaint.setStrokeWidth(3.5f);
+        pointRingPaint.setColor(chartGoldDarkColor());
+        canvas.drawCircle(lastX, lastY, 10f, pointRingPaint);
+        pointPaint.setColor(darkMode ? 0xFFFFE08A : 0xFFB8892A);
+        canvas.drawCircle(lastX, lastY, 5.5f, pointPaint);
 
         // نمایش نقطه انتخاب‌شده با لمس
         if (selectedIndex >= 0
@@ -1420,38 +1538,58 @@ public class PriceChartView extends View {
             String priceText =
                     formatPrice(lastPrice);
 
-            textPaint.setColor(chartGoldDarkColor());
-            textPaint.setTextSize(11f);
+            textPaint.setColor(darkMode ? 0xFFFFE08A : 0xFF8A6414);
+            textPaint.setTextSize(23f);
             textPaint.setTypeface(
-                    Typeface.create(
-                            Typeface.DEFAULT,
-                            Typeface.BOLD
-                    )
+                    Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             );
 
-            float priceWidth =
-                    textPaint.measureText(
-                            priceText
-                    );
+            float priceWidth = textPaint.measureText(priceText);
+            float badgePaddingX = 13f;
+            float badgeWidth = priceWidth + badgePaddingX * 2f;
+            float badgeHeight = 38f;
 
-            float priceX =
-                    lastX - priceWidth - 8f;
+            float badgeLeft = lastX - badgeWidth - 15f;
+            badgeLeft = Math.max(
+                    left,
+                    Math.min(right - badgeWidth, badgeLeft)
+            );
 
-            if (priceX < left) {
-                priceX = left;
+            float badgeTop = lastY - badgeHeight - 16f;
+            if (badgeTop < top) {
+                badgeTop = Math.min(
+                        bottom - badgeHeight,
+                        lastY + 16f
+                );
             }
+            badgeTop = Math.max(top, badgeTop);
 
-            float priceY =
-                    lastY - 12f;
+            Paint badgePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            badgePaint.setColor(
+                    darkMode ? 0xFF302713 : 0xFFFFF5D8
+            );
+            canvas.drawRoundRect(
+                    badgeLeft, badgeTop,
+                    badgeLeft + badgeWidth, badgeTop + badgeHeight,
+                    12f, 12f, badgePaint
+            );
 
-            if (priceY < 12f) {
-                priceY = lastY + 18f;
-            }
+            Paint badgeBorder = new Paint(Paint.ANTI_ALIAS_FLAG);
+            badgeBorder.setStyle(Paint.Style.STROKE);
+            badgeBorder.setStrokeWidth(1.5f);
+            badgeBorder.setColor(
+                    darkMode ? 0xFFFFD966 : 0xFFD4AF37
+            );
+            canvas.drawRoundRect(
+                    badgeLeft, badgeTop,
+                    badgeLeft + badgeWidth, badgeTop + badgeHeight,
+                    12f, 12f, badgeBorder
+            );
 
             canvas.drawText(
                     priceText,
-                    priceX,
-                    priceY,
+                    badgeLeft + badgePaddingX,
+                    badgeTop + 25f,
                     textPaint
             );
 

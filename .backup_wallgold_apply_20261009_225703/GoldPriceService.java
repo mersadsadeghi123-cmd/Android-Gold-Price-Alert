@@ -1,0 +1,1322 @@
+package com.mersad.gold18;
+
+import android.Manifest;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.Service;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Looper;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Locale;
+
+public class GoldPriceService extends Service {
+
+    private static final String DIGIKALA_API =
+            "https://api.digikala.com/wealth/v1/prices/";
+
+    private static final String MILLI_API =
+            "https://milli.gold/api/v1/public/milli-price/external";
+
+    private static final String TGJU_URL =
+            "https://www.tgju.org/profile/geram18";
+
+    private static final String SNAPPGOLD_API = "https://snappgold.net/api/backend/api/v1/products/gold-price";
+
+    private static final String TOPGOLD_API =
+            "https://topgoldonline.com/wp-admin/admin-ajax.php?action=gpc_get_live_price";
+
+    private static final String MELLIGOLD_API =
+            "https://melligold.com/api/v1/exchange/buy-sell-price/?symbol=XAU18&format=json";
+
+    private static final String TALASI_API =
+            "https://api.talasea.ir/api/market/getGoldPrice";
+
+    private static final String CHANNEL_ID =
+            "gold_background";
+
+    private static final String ALERT_CHANNEL_ID =
+            "gold_alerts";
+
+    private static final long RAPID_CHANGE_WINDOW =
+            5 * 60_000L;
+
+    private static final double RAPID_CHANGE_THRESHOLD =
+            0.5;
+
+    private static final long RAPID_ALERT_COOLDOWN =
+            10 * 60_000L;
+
+    private long lastHistorySave = 0;
+
+    private volatile boolean checking = false;
+
+    private final Handler handler =
+            new Handler(Looper.getMainLooper());
+
+    private long getInterval() {
+
+        return getSharedPreferences(
+                "settings",
+                MODE_PRIVATE
+        ).getLong(
+                "background_interval",
+                15000
+        );
+    }
+
+    private String getSource() {
+
+        return getSharedPreferences(
+                "gold_settings",
+                MODE_PRIVATE
+        ).getString(
+                "price_source",
+                "digikala"
+        );
+    }
+
+    private String getSourceName() {
+
+        if ("milli".equals(getSource())) {
+            return "میلی";
+        }
+
+        if ("tgju".equals(getSource())) {
+            return "TGJU";
+        }
+
+        if ("snappgold".equals(getSource())) {
+            return "اسنپ‌گلد";
+        }
+
+        if ("topgold".equals(getSource())) {
+            return "تاپ‌گلد";
+        }
+
+        if ("melligold".equals(getSource())) {
+            return "ملی‌گلد";
+        }
+
+        if ("talasi".equals(getSource())) {
+            return "طلاسی";
+        }
+
+        return "دیجی‌کالا";
+    }
+
+    private String getApiUrl() {
+
+        if ("milli".equals(getSource())) {
+            return MILLI_API;
+        }
+
+        if ("snappgold".equals(getSource())) {
+            return SNAPPGOLD_API;
+        }
+
+        if ("tgju".equals(getSource())) {
+            return TGJU_URL;
+        }
+
+        if ("topgold".equals(getSource())) {
+            return TOPGOLD_API;
+        }
+
+        if ("melligold".equals(getSource())) {
+            return MELLIGOLD_API;
+        }
+
+        if ("talasi".equals(getSource())) {
+            return TALASI_API;
+        }
+
+        return DIGIKALA_API;
+    }
+
+    private final Runnable checker =
+            new Runnable() {
+
+                @Override
+                public void run() {
+
+                    if (!checking) {
+                        checkPrice();
+                    }
+
+                    handler.postDelayed(
+                            this,
+                            getInterval()
+                    );
+                }
+            };
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+
+        if (intent != null &&
+                "com.mersad.gold18.WIDGET_REFRESH"
+                        .equals(intent.getAction())) {
+
+            checkPrice();
+        }
+
+        return START_STICKY;
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+
+        Intent restartService =
+                new Intent(getApplicationContext(), GoldPriceService.class);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            getApplicationContext().startForegroundService(restartService);
+        } else {
+            getApplicationContext().startService(restartService);
+        }
+    }
+
+    @Override
+    public void onCreate() {
+
+        super.onCreate();
+
+        createChannels();
+
+        Intent openIntent =
+                new Intent(
+                        this,
+                        MainActivity.class
+                );
+
+        openIntent.setFlags(
+                Intent.FLAG_ACTIVITY_SINGLE_TOP |
+                Intent.FLAG_ACTIVITY_CLEAR_TOP
+        );
+
+        PendingIntent pendingIntent =
+                PendingIntent.getActivity(
+                        this,
+                        1001,
+                        openIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT |
+                        PendingIntent.FLAG_IMMUTABLE
+                );
+
+        Notification notification =
+                new Notification.Builder(
+                        this,
+                        CHANNEL_ID
+                )
+                        .setSmallIcon(
+                                R.drawable.ic_notification_gold
+                        )
+                        .setContentTitle("MrGold")
+                        .setContentText(
+                                "رصد " +
+                                getSourceName() +
+                                " در پس‌زمینه فعال است"
+                        )
+                        .setContentIntent(
+                                pendingIntent
+                        )
+                        .setOngoing(true)
+                        .build();
+
+        startForeground(
+                1001,
+                notification
+        );
+
+        handler.post(checker);
+    }
+
+    private void checkPrice() {
+
+        if (checking) {
+            return;
+        }
+
+        checking = true;
+
+        new Thread(() -> {
+
+            HttpURLConnection connection = null;
+
+            try {
+
+                final String requestSource =
+                        getSource();
+
+                final String requestUrl;
+
+                if ("milli".equals(requestSource)) {
+                    requestUrl = MILLI_API;
+                } else if ("tgju".equals(requestSource)) {
+                    requestUrl = TGJU_URL;
+                } else if ("snappgold".equals(requestSource)) {
+                    requestUrl = SNAPPGOLD_API;
+                } else if ("topgold".equals(requestSource)) {
+                    requestUrl = TOPGOLD_API;
+                } else if ("melligold".equals(requestSource)) {
+                    requestUrl = MELLIGOLD_API;
+                } else if ("talasi".equals(requestSource)) {
+                    requestUrl = TALASI_API;
+                } else {
+                    requestUrl = DIGIKALA_API;
+                }
+
+                StringBuilder response = new StringBuilder();
+
+                if ("melligold".equals(requestSource)) {
+
+                    response.append(fetchMelliGoldResponse());
+
+                } else {
+
+                    URL url = new URL(requestUrl);
+                    connection = (HttpURLConnection) url.openConnection();
+                    connection.setRequestMethod("GET");
+                    connection.setConnectTimeout(5000);
+                    connection.setReadTimeout(5000);
+                    connection.setUseCaches(false);
+
+                    BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(connection.getInputStream())
+                    );
+
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    reader.close();
+                }
+
+                String source =
+                        requestSource;
+
+                long price;
+
+                if ("tgju".equals(source)) {
+
+                    price =
+                            parseTgjuHtml(response.toString());
+
+                } else if ("snappgold".equals(source)) {
+
+                    price = Long.parseLong(
+                            response.toString().trim()
+                    );
+
+                } else {
+
+                    JSONObject json =
+                            new JSONObject(
+                                    response.toString()
+                            );
+
+                    price =
+                            parsePrice(json, source);
+                }
+
+                long now =
+                        System.currentTimeMillis();
+
+                if (now - lastHistorySave >= 60_000) {
+
+                    PriceHistory.add(
+                            this,
+                            price,
+                            source
+                    );
+
+                    lastHistorySave = now;
+                }
+
+                SharedPreferences widgetPrefs =
+                        getSharedPreferences(
+                                "gold_settings",
+                                MODE_PRIVATE
+                        );
+
+                long oldWidgetPrice =
+                        widgetPrefs.getLong(
+                                "widget_price",
+                                0
+                        );
+
+                long widgetChange =
+                        oldWidgetPrice > 0
+                                ? price - oldWidgetPrice
+                                : 0;
+
+                widgetPrefs.edit()
+                        .putLong(
+                                "widget_price",
+                                price
+                        )
+                        .putLong(
+                                "widget_change",
+                                widgetChange
+                        )
+                        .putString(
+                                "widget_source",
+                                sourceName(source)
+                        )
+                        .putLong(
+                                "widget_last_update",
+                                now
+                        )
+                        .putBoolean(
+                                "widget_online",
+                                true
+                        )
+                        .apply();
+
+                MerGoldWidget.updateWidgets(this);
+
+                updateBackgroundNotification(
+                        price,
+                        source
+                );
+
+                double rapidChangePercent =
+                        getRapidChangePercent(
+                                price,
+                                source
+                        );
+
+                SharedPreferences rapidPrefs =
+                        getSharedPreferences(
+                                "gold_settings",
+                                MODE_PRIVATE
+                        );
+
+                rapidPrefs.edit()
+                        .putString(
+                                "rapid_change_percent_" + source,
+                                Double.toString(rapidChangePercent)
+                        )
+                        .apply();
+
+                String rapidAlertedKey =
+                        "rapid_alerted_" + source;
+
+                boolean rapidAlerted =
+                        rapidPrefs.getBoolean(
+                                rapidAlertedKey,
+                                false
+                        );
+
+                if (Math.abs(rapidChangePercent)
+                        >= RAPID_CHANGE_THRESHOLD) {
+
+                    String rapidCooldownKey =
+                            "rapid_alert_time_" + source;
+
+                    long lastRapidAlert =
+                            rapidPrefs.getLong(
+                                    rapidCooldownKey,
+                                    0
+                            );
+
+                    long nowRapidAlert =
+                            System.currentTimeMillis();
+
+                    boolean rapidCooldownActive =
+                            lastRapidAlert > 0 &&
+                            nowRapidAlert - lastRapidAlert
+                                    < RAPID_ALERT_COOLDOWN;
+
+                    if (!rapidCooldownActive) {
+
+                        String rapidTitle =
+                                rapidChangePercent > 0
+                                        ? "افزایش سریع قیمت طلا"
+                                        : "کاهش سریع قیمت طلا";
+
+                        String rapidMessage =
+                                "قیمت در ۵ دقیقه اخیر " +
+                                String.format(
+                                        Locale.US,
+                                        "%.2f",
+                                        Math.abs(rapidChangePercent)
+                                ) +
+                                "٪ " +
+                                (rapidChangePercent > 0
+                                        ? "افزایش"
+                                        : "کاهش") +
+                                " داشته است.";
+
+                        sendAlert(
+                                rapidTitle,
+                                rapidMessage
+                        );
+
+                        rapidPrefs.edit()
+                                .putBoolean(
+                                        rapidAlertedKey,
+                                        true
+                                )
+                                .putLong(
+                                        rapidCooldownKey,
+                                        nowRapidAlert
+                                )
+                                .apply();
+                    }
+
+                } else {
+
+                    rapidPrefs.edit()
+                            .putBoolean(
+                                    rapidAlertedKey,
+                                    false
+                            )
+                            .apply();
+                }
+
+                checkTargets(
+                        price,
+                        source
+                );
+
+            } catch (Exception ignored) {
+
+            } finally {
+
+                if (connection != null) {
+                    connection.disconnect();
+                }
+
+                checking = false;
+            }
+
+        }).start();
+    }
+
+    private String fetchMelliGoldResponse() throws Exception {
+        HttpURLConnection first = null;
+        HttpURLConnection retry = null;
+
+        try {
+            URL url = new URL(MELLIGOLD_API);
+            first = (HttpURLConnection) url.openConnection();
+            first.setRequestMethod("GET");
+            first.setConnectTimeout(5000);
+            first.setReadTimeout(5000);
+            first.setUseCaches(false);
+            first.setInstanceFollowRedirects(false);
+
+            int status = first.getResponseCode();
+
+            if (status == HttpURLConnection.HTTP_OK) {
+                return readMelliGoldBody(first);
+            }
+
+            if (status != 301 && status != 302 && status != 303
+                    && status != 307 && status != 308) {
+                throw new java.io.IOException(
+                        "MelliGold HTTP status: " + status
+                );
+            }
+
+            StringBuilder cookies = new StringBuilder();
+
+            for (java.util.Map.Entry<String, java.util.List<String>> entry
+                    : first.getHeaderFields().entrySet()) {
+                if (entry.getKey() == null
+                        || !"Set-Cookie".equalsIgnoreCase(entry.getKey())
+                        || entry.getValue() == null) {
+                    continue;
+                }
+
+                for (String cookie : entry.getValue()) {
+                    String pair = cookie.split(";", 2)[0].trim();
+                    if (!pair.isEmpty()) {
+                        if (cookies.length() > 0) {
+                            cookies.append("; ");
+                        }
+                        cookies.append(pair);
+                    }
+                }
+            }
+
+            first.disconnect();
+            first = null;
+
+            retry = (HttpURLConnection) url.openConnection();
+            retry.setRequestMethod("GET");
+            retry.setConnectTimeout(5000);
+            retry.setReadTimeout(5000);
+            retry.setUseCaches(false);
+
+            if (cookies.length() > 0) {
+                retry.setRequestProperty("Cookie", cookies.toString());
+            }
+
+            int retryStatus = retry.getResponseCode();
+            if (retryStatus != HttpURLConnection.HTTP_OK) {
+                throw new java.io.IOException(
+                        "MelliGold retry HTTP status: " + retryStatus
+                );
+            }
+
+            return readMelliGoldBody(retry);
+
+        } finally {
+            if (first != null) {
+                first.disconnect();
+            }
+            if (retry != null) {
+                retry.disconnect();
+            }
+        }
+    }
+
+    private String readMelliGoldBody(HttpURLConnection connection)
+            throws Exception {
+        StringBuilder body = new StringBuilder();
+
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(connection.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                body.append(line);
+            }
+        }
+
+        return body.toString();
+    }
+
+    private long fetchTgjuPrice(HttpURLConnection connection)
+            throws Exception {
+
+        BufferedReader reader =
+                new BufferedReader(
+                        new InputStreamReader(
+                                connection.getInputStream()
+                        )
+                );
+
+        StringBuilder html =
+                new StringBuilder();
+
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+            html.append(line);
+        }
+
+        reader.close();
+
+        String page = html.toString();
+
+        String label =
+                "<td class=\"text-right\">نرخ فعلی</td>";
+
+        int labelIndex =
+                page.indexOf(label);
+
+        if (labelIndex == -1) {
+            throw new Exception("TGJU current price label not found");
+        }
+
+        int valueStart =
+                page.indexOf(
+                        "<td class=\"text-left\">",
+                        labelIndex
+                );
+
+        if (valueStart == -1) {
+            throw new Exception("TGJU current price value not found");
+        }
+
+        valueStart +=
+                "<td class=\"text-left\">".length();
+
+        int valueEnd =
+                page.indexOf(
+                        "</td>",
+                        valueStart
+                );
+
+        if (valueEnd == -1) {
+            throw new Exception("TGJU current price end not found");
+        }
+
+        String priceText =
+                page.substring(
+                        valueStart,
+                        valueEnd
+                )
+                .replace(",", "")
+                .trim();
+
+        return Long.parseLong(priceText) / 10;
+    }
+
+    private long parseTgjuHtml(String page)
+            throws Exception {
+
+        String label =
+                "<td class=\"text-right\">نرخ فعلی</td>";
+
+        int labelIndex =
+                page.indexOf(label);
+
+        if (labelIndex == -1) {
+            throw new Exception(
+                    "TGJU current price label not found"
+            );
+        }
+
+        int valueStart =
+                page.indexOf(
+                        "<td class=\"text-left\">",
+                        labelIndex
+                );
+
+        if (valueStart == -1) {
+            throw new Exception(
+                    "TGJU current price value not found"
+            );
+        }
+
+        valueStart +=
+                "<td class=\"text-left\">".length();
+
+        int valueEnd =
+                page.indexOf(
+                        "</td>",
+                        valueStart
+                );
+
+        if (valueEnd == -1) {
+            throw new Exception(
+                    "TGJU current price end not found"
+            );
+        }
+
+        String priceText =
+                page.substring(
+                        valueStart,
+                        valueEnd
+                )
+                .replace(",", "")
+                .trim();
+
+        return Long.parseLong(priceText) / 10;
+    }
+
+    private long parsePrice(JSONObject json, String source)
+            throws Exception {
+
+        if ("topgold".equals(source)) {
+            return json
+                    .getJSONObject("data")
+                    .getLong("price");
+        }
+
+        if ("melligold".equals(source)) {
+            return json.getJSONObject("data").getLong("price_sell");
+        }
+
+        if ("milli".equals(source)) {
+            return json
+                    .getJSONObject("data")
+                    .getLong("price18") * 100;
+        }
+
+        if ("talasi".equals(source)) {
+            return json.getLong("price") * 1000;
+        }
+
+        return json
+                .getJSONObject("gold18")
+                .getLong("price") * 100;
+    }
+
+    private void updateBackgroundNotification(
+            long currentPrice,
+            String source) {
+
+        try {
+
+            JSONArray history =
+                    PriceHistory.get(
+                            this,
+                            source
+                    );
+
+            long highest = currentPrice;
+            long lowest = currentPrice;
+            long previous = currentPrice;
+
+            for (int i = 0;
+                 i < history.length();
+                 i++) {
+
+                JSONObject item =
+                        history.getJSONObject(i);
+
+                long value =
+                        item.getLong("price");
+
+                if (value > highest) {
+                    highest = value;
+                }
+
+                if (value < lowest) {
+                    lowest = value;
+                }
+
+                if (i ==
+                        history.length() - 1) {
+
+                    previous = value;
+                }
+            }
+
+            long change =
+                    currentPrice - previous;
+
+            String changeText;
+
+            if (change > 0) {
+
+                changeText =
+                        "🟢 ▲ +" +
+                        formatPrice(change) +
+                        " تومان";
+
+            } else if (change < 0) {
+
+                changeText =
+                        "🔴 ▼ -" +
+                        formatPrice(
+                                Math.abs(change)
+                        ) +
+                        " تومان";
+
+            } else {
+
+                changeText =
+                        "⚪ — بدون تغییر";
+            }
+
+            Intent openIntent =
+                    new Intent(
+                            this,
+                            MainActivity.class
+                    );
+
+            openIntent.setFlags(
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP |
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP
+            );
+
+            PendingIntent pendingIntent =
+                    PendingIntent.getActivity(
+                            this,
+                            1001,
+                            openIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT |
+                            PendingIntent.FLAG_IMMUTABLE
+                    );
+
+            String title =
+                    "MrGold • " +
+                    sourceName(source) +
+                    " • طلای ۱۸ عیار";
+
+            SharedPreferences settings =
+                    getSharedPreferences(
+                            "gold_settings",
+                            MODE_PRIVATE
+                    );
+
+            String highTarget =
+                    settings.getString(
+                            "high_target_" + source,
+                            ""
+                    );
+
+            String lowTarget =
+                    settings.getString(
+                            "low_target_" + source,
+                            ""
+                    );
+
+            boolean highEnabled =
+                    settings.getBoolean(
+                            "high_enabled_" + source,
+                            true
+                    );
+
+            boolean lowEnabled =
+                    settings.getBoolean(
+                            "low_enabled_" + source,
+                            true
+                    );
+
+            String targetText = "";
+
+            if (highEnabled &&
+                    !highTarget.isEmpty()) {
+
+                targetText +=
+                        "🔺 بالا: " +
+                        highTarget +
+                        " تومان";
+            }
+
+            if (lowEnabled &&
+                    !lowTarget.isEmpty()) {
+
+                if (!targetText.isEmpty()) {
+                    targetText += "\n";
+                }
+
+                targetText +=
+                        "🔻 پایین: " +
+                        lowTarget +
+                        " تومان";
+            }
+
+            String compactText =
+                    "💰 " +
+                    formatPrice(currentPrice) +
+                    " تومان   " +
+                    changeText;
+
+            String details =
+                    "💰 " +
+                    formatPrice(currentPrice) +
+                    " تومان\n" +
+                    changeText;
+
+            if (!targetText.isEmpty()) {
+                details += "\n" + targetText;
+            }
+
+            Notification.Builder builder =
+                    new Notification.Builder(
+                            this,
+                            CHANNEL_ID
+                    )
+                            .setSmallIcon(
+                                    R.drawable.ic_notification_gold
+                            )
+                            .setContentTitle(title)
+                            .setContentText(
+                                    compactText
+                            )
+                            .setStyle(
+                                    new Notification.BigTextStyle()
+                                            .bigText(details)
+                                            .setBigContentTitle(title)
+                            )
+                            .setContentIntent(
+                                    pendingIntent
+                            )
+                            .setOngoing(true)
+                            .setOnlyAlertOnce(true)
+                            .setShowWhen(false)
+                            .setCategory(
+                                    Notification.CATEGORY_STATUS
+                            )
+                            .setVisibility(
+                                    Notification.VISIBILITY_PUBLIC
+                            )
+                            .setColor(
+                                    change > 0
+                                            ? 0xFF2E7D32
+                                            : change < 0
+                                            ? 0xFFC62828
+                                            : 0xFF757575
+                            );
+
+            NotificationManager manager =
+                    (NotificationManager)
+                            getSystemService(
+                                    Context.NOTIFICATION_SERVICE
+                            );
+
+            if (manager != null) {
+
+                manager.notify(
+                        1001,
+                        builder.build()
+                );
+            }
+
+        } catch (Exception ignored) {
+        }
+    }
+
+    private String sourceName(String source) {
+
+        if ("milli".equals(source)) {
+            return "میلی";
+        }
+
+        if ("snappgold".equals(source)) {
+            return "اسنپ‌گلد";
+        }
+
+        if ("tgju".equals(source)) {
+            return "TGJU";
+        }
+
+        if ("topgold".equals(source)) {
+            return "تاپ‌گلد";
+        }
+
+        if ("melligold".equals(source)) {
+            return "ملی‌گلد";
+        }
+
+        if ("talasi".equals(source)) {
+            return "طلاسی";
+        }
+
+        return "دیجی‌کالا";
+    }
+
+    private void checkTargets(
+            long price,
+            String source) {
+
+        SharedPreferences prefs =
+                getSharedPreferences(
+                        "gold_settings",
+                        MODE_PRIVATE
+                );
+
+        String suffix =
+                "_alerted_" + source;
+
+        String highTargetKey =
+                "high_target_" + source;
+
+        String highEnabledKey =
+                "high_enabled_" + source;
+
+        String highTarget2Key =
+                "high_target_2_" + source;
+
+        String highEnabled2Key =
+                "high_enabled_2_" + source;
+
+        String lowTargetKey =
+                "low_target_" + source;
+
+        String lowEnabledKey =
+                "low_enabled_" + source;
+
+        String lowTarget2Key =
+                "low_target_2_" + source;
+
+        String lowEnabled2Key =
+                "low_enabled_2_" + source;
+
+        checkSingleTarget(
+                prefs,
+                price,
+                highTargetKey,
+                highEnabledKey,
+                "high_alerted" + suffix,
+                true,
+                "🔺 هدف بالای طلا"
+        );
+
+        checkSingleTarget(
+                prefs,
+                price,
+                highTarget2Key,
+                highEnabled2Key,
+                "high_alerted_2" + suffix,
+                true,
+                "🔺 هدف بالای طلا ۲"
+        );
+
+        checkSingleTarget(
+                prefs,
+                price,
+                lowTargetKey,
+                lowEnabledKey,
+                "low_alerted" + suffix,
+                false,
+                "🔻 هدف پایین طلا"
+        );
+
+        checkSingleTarget(
+                prefs,
+                price,
+                lowTarget2Key,
+                lowEnabled2Key,
+                "low_alerted_2" + suffix,
+                false,
+                "🔻 هدف پایین طلا ۲"
+        );
+    }
+
+    private void checkSingleTarget(
+            SharedPreferences prefs,
+            long price,
+            String targetKey,
+            String enabledKey,
+            String alertedKey,
+            boolean isHigh,
+            String title) {
+
+        try {
+
+            String targetText =
+                    prefs.getString(
+                            targetKey,
+                            ""
+                    );
+
+            boolean enabled =
+                    prefs.getBoolean(
+                            enabledKey,
+                            true
+                    );
+
+            boolean alerted =
+                    prefs.getBoolean(
+                            alertedKey,
+                            false
+                    );
+
+            if (!enabled ||
+                    targetText.isEmpty()) {
+
+                return;
+            }
+
+            long target =
+                    Long.parseLong(
+                            targetText
+                    );
+
+            boolean reached =
+                    isHigh
+                            ? price >= target
+                            : price <= target;
+
+            if (reached && !alerted) {
+
+                sendAlert(
+                        title,
+                        "قیمت به " +
+                        formatPrice(price) +
+                        " تومان رسید."
+                );
+
+                prefs.edit()
+                        .putBoolean(
+                                alertedKey,
+                                true
+                        )
+                        .apply();
+
+            } else if (!reached) {
+
+                prefs.edit()
+                        .putBoolean(
+                                alertedKey,
+                                false
+                        )
+                        .apply();
+            }
+
+        } catch (Exception ignored) {
+        }
+    }
+
+    private double getRapidChangePercent(
+            long currentPrice,
+            String source) {
+
+        try {
+
+            JSONArray history =
+                    PriceHistory.get(
+                            this,
+                            source
+                    );
+
+            if (history.length() == 0) {
+                return 0.0;
+            }
+
+            long now =
+                    System.currentTimeMillis();
+
+            long cutoff =
+                    now - RAPID_CHANGE_WINDOW;
+
+            long referencePrice = 0;
+
+            for (int i = history.length() - 1;
+                 i >= 0;
+                 i--) {
+
+                JSONObject item =
+                        history.getJSONObject(i);
+
+                long time =
+                        item.getLong("time");
+
+                if (time <= cutoff) {
+
+                    referencePrice =
+                            item.getLong("price");
+
+                    break;
+                }
+            }
+
+            if (referencePrice <= 0) {
+                return 0.0;
+            }
+
+            return (
+                    (currentPrice - referencePrice)
+                            * 100.0
+            ) / referencePrice;
+
+        } catch (Exception ignored) {
+
+            return 0.0;
+        }
+    }
+
+    private void createChannels() {
+
+        if (Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.O) {
+
+            NotificationManager manager =
+                    getSystemService(
+                            NotificationManager.class
+                    );
+
+            NotificationChannel channel =
+                    new NotificationChannel(
+                            ALERT_CHANNEL_ID,
+                            "هشدار قیمت طلا",
+                            NotificationManager.IMPORTANCE_HIGH
+                    );
+
+            channel.setDescription(
+                    "هشدار رسیدن قیمت طلا به اهداف تعیین‌شده"
+            );
+
+            manager.createNotificationChannel(
+                    channel
+            );
+
+            NotificationChannel backgroundChannel =
+                    new NotificationChannel(
+                            CHANNEL_ID,
+                            "رصد قیمت در پس‌زمینه",
+                            NotificationManager.IMPORTANCE_LOW
+                    );
+
+            backgroundChannel.setDescription(
+                    "نمایش قیمت لحظه‌ای طلا در پس‌زمینه"
+            );
+
+            manager.createNotificationChannel(
+                    backgroundChannel
+            );
+        }
+    }
+
+    private String formatPrice(long price) {
+
+        return String.format(
+                Locale.US,
+                "%,d",
+                price
+        );
+    }
+
+    private void sendAlert(
+            String title,
+            String message) {
+
+        if (Build.VERSION.SDK_INT >= 33 &&
+                checkSelfPermission(
+                        Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED) {
+
+            return;
+        }
+
+        Notification notification =
+                new Notification.Builder(
+                        this,
+                        ALERT_CHANNEL_ID
+                )
+                        .setSmallIcon(
+                                R.drawable.ic_notification_gold
+                        )
+                        .setContentTitle(title)
+                        .setContentText(message)
+                        .setAutoCancel(true)
+                        .setPriority(
+                                Notification.PRIORITY_HIGH
+                        )
+                        .build();
+
+        NotificationManager manager =
+                (NotificationManager)
+                        getSystemService(
+                                Context.NOTIFICATION_SERVICE
+                        );
+
+        if (manager != null) {
+
+            manager.notify(
+                    (int)
+                            System.currentTimeMillis(),
+                    notification
+            );
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+
+        handler.removeCallbacks(checker);
+
+        super.onDestroy();
+    }
+
+    @Override
+    public IBinder onBind(
+            Intent intent) {
+
+        return null;
+    }
+}

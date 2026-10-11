@@ -28,7 +28,7 @@
     <color name="targets_tabs_bg">#F3F1EC</color>
     <color name="targets_voice_title">#222222</color>
 
-    <color name="voice_title_text">#222222</color>
-    <color name="voice_secondary_text">#777777</color>
-    <color name="voice_label_text">#555555</color>
+    <color name="voice_title_text">#76570D</color>
+    <color name="voice_secondary_text">#5F5A4D</color>
+    <color name="voice_label_text">#51451F</color>
 </resources>

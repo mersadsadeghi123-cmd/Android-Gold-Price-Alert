@@ -1,0 +1,60 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- پس‌زمینه سکه -->
+    <path
+        android:fillColor="#B8860B"
+        android:pathData="M54,3
+        A51,51 0,1 0,54,105
+        A51,51 0,1 0,54,3" />
+
+    <!-- لبه روشن سکه -->
+    <path
+        android:fillColor="#F6D365"
+        android:pathData="M54,9
+        A45,45 0,1 0,54,99
+        A45,45 0,1 0,54,9" />
+
+    <!-- سطح اصلی -->
+    <path
+        android:fillColor="#D4AF37"
+        android:pathData="M54,15
+        A39,39 0,1 0,54,93
+        A39,39 0,1 0,54,15" />
+
+    <!-- حلقه داخلی -->
+    <path
+        android:fillColor="#B8860B"
+        android:pathData="M54,21
+        A33,33 0,1 0,54,87
+        A33,33 0,1 0,54,21" />
+
+    <path
+        android:fillColor="#D4AF37"
+        android:pathData="M54,24
+        A30,30 0,1 0,54,84
+        A30,30 0,1 0,54,24" />
+
+    <!-- حرف M -->
+    <path
+        android:fillColor="#FFF4B0"
+        android:pathData="
+        M30,72
+        L30,37
+        L38,37
+        L54,57
+        L70,37
+        L78,37
+        L78,72
+        L69,72
+        L69,51
+        L57,67
+        L51,67
+        L39,51
+        L39,72
+        Z" />
+
+</vector>

@@ -833,6 +833,7 @@
                 android:paddingEnd="8dp"
 
                 android:background="@drawable/market_snapshot_row"
+                android:tag="snapshot_row"
 
                 android:layoutDirection="rtl">
 
@@ -917,6 +918,7 @@
                 android:paddingEnd="8dp"
 
                 android:background="@drawable/market_snapshot_row"
+                android:tag="snapshot_row"
 
                 android:layout_marginTop="4dp"
 
@@ -1003,6 +1005,7 @@
                 android:paddingEnd="8dp"
 
                 android:background="@drawable/market_snapshot_row"
+                android:tag="snapshot_row"
 
                 android:layout_marginTop="4dp"
 
@@ -1089,6 +1092,7 @@
                 android:paddingEnd="8dp"
 
                 android:background="@drawable/market_snapshot_row"
+                android:tag="snapshot_row"
 
                 android:layout_marginTop="4dp"
 
@@ -1175,6 +1179,7 @@
                 android:paddingEnd="8dp"
 
                 android:background="@drawable/market_snapshot_row"
+                android:tag="snapshot_row"
 
                 android:layout_marginTop="4dp"
 
@@ -1261,6 +1266,7 @@
                 android:paddingEnd="8dp"
 
                 android:background="@drawable/market_snapshot_row"
+                android:tag="snapshot_row"
 
                 android:layout_marginTop="4dp"
 
@@ -1347,6 +1353,7 @@
                 android:paddingEnd="8dp"
 
                 android:background="@drawable/market_snapshot_row"
+                android:tag="snapshot_row"
 
                 android:layout_marginTop="4dp"
 
@@ -1435,6 +1442,7 @@
                 android:paddingEnd="8dp"
 
                 android:background="@drawable/market_snapshot_row"
+                android:tag="snapshot_row"
 
                 android:layout_marginTop="4dp"
 

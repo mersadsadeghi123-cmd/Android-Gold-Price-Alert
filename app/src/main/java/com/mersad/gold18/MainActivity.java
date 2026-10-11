@@ -5063,6 +5063,8 @@ if ("tgju".equals(source)) {
             view.setBackgroundResource(dark ? R.drawable.calculator_modes_bg_dark : R.drawable.calculator_modes_bg);
         } else if ("calc_amount_box".equals(calcTag)) {
             view.setBackgroundResource(dark ? R.drawable.target_input_dark : R.drawable.target_input);
+        } else if ("snapshot_row".equals(calcTag)) {
+            view.setBackgroundResource(dark ? R.drawable.market_snapshot_row_dark : R.drawable.market_snapshot_row);
         }
 
         if (view.getId() == R.id.voiceAlertCard) {

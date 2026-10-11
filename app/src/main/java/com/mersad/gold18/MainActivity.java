@@ -1397,9 +1397,9 @@ snappGoldRadio = findViewById(R.id.snappGoldRadio);
 
                     marketNavText.setTextColor(
                             Color.rgb(
-                                    184,
-                                    138,
-                                    22
+                                    62,
+                                    44,
+                                    4
                             )
                     );
 
@@ -1444,9 +1444,9 @@ snappGoldRadio = findViewById(R.id.snappGoldRadio);
 
                     toolsNavText.setTextColor(
                             Color.rgb(
-                                    184,
-                                    138,
-                                    22
+                                    62,
+                                    44,
+                                    4
                             )
                     );
 

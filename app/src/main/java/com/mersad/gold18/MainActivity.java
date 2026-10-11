@@ -4901,7 +4901,7 @@ if ("tgju".equals(source)) {
         }
 
         boolean isSmartAnalysisText =
-                view.getId() == R.id.smartAnalysisText
+                false
                 || view.getId() == R.id.trendAnalysisText
                 || view.getId() == R.id.shortTermAnalysisText
                 || view.getId() == R.id.positionAnalysisText
@@ -5183,7 +5183,7 @@ if ("tgju".equals(source)) {
                             : R.drawable.chart_segment_container
             );
         } else if (view.getId() == R.id.priceCard
-                || view.getId() == R.id.sourceCard
+                || false
                 || view.getId() == R.id.statsCard
                 || view.getId() == R.id.comparisonCard) {
 

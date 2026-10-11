@@ -5054,6 +5054,17 @@ if ("tgju".equals(source)) {
             }
         }
 
+        Object calcTag = view.getTag();
+        if ("calc_result".equals(calcTag)) {
+            view.setBackgroundResource(dark ? R.drawable.calculator_result_dark : R.drawable.calculator_result);
+        } else if ("calc_live".equals(calcTag)) {
+            view.setBackgroundResource(dark ? R.drawable.calculator_live_price_dark : R.drawable.calculator_live_price);
+        } else if ("calc_modes".equals(calcTag)) {
+            view.setBackgroundResource(dark ? R.drawable.calculator_modes_bg_dark : R.drawable.calculator_modes_bg);
+        } else if ("calc_amount_box".equals(calcTag)) {
+            view.setBackgroundResource(dark ? R.drawable.target_input_dark : R.drawable.target_input);
+        }
+
         if (view.getId() == R.id.voiceAlertCard) {
             view.setBackgroundResource(
                     dark

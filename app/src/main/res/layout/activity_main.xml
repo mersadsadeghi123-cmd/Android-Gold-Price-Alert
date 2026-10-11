@@ -3762,6 +3762,7 @@
                 android:gravity="center_vertical"
 
                 android:background="@drawable/calculator_live_price"
+                android:tag="calc_live"
 
                 android:paddingStart="12dp"
 
@@ -3832,6 +3833,7 @@
                 android:layout_marginTop="13dp"
 
                 android:background="@drawable/calculator_modes_bg"
+                android:tag="calc_modes"
 
                 android:padding="4dp"
 
@@ -4018,6 +4020,7 @@
                     android:gravity="center_vertical"
 
                     android:background="@drawable/target_input"
+                    android:tag="calc_amount_box"
 
                     android:paddingStart="14dp"
 
@@ -4124,6 +4127,7 @@
                 android:orientation="vertical"
 
                 android:background="@drawable/calculator_result"
+                android:tag="calc_result"
 
                 android:padding="12dp"
 
@@ -4586,6 +4590,7 @@
                     android:orientation="vertical"
 
                     android:background="@drawable/calculator_result"
+                android:tag="calc_result"
 
                     android:padding="12dp"
 
@@ -4800,6 +4805,7 @@
                     android:orientation="vertical"
 
                     android:background="@drawable/calculator_result"
+                android:tag="calc_result"
 
                     android:padding="12dp"
 
@@ -5058,6 +5064,7 @@
                     android:orientation="vertical"
 
                     android:background="@drawable/calculator_result"
+                android:tag="calc_result"
 
                     android:padding="12dp"
 

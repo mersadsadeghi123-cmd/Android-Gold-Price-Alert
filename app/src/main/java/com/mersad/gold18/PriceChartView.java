@@ -1672,7 +1672,7 @@ public class PriceChartView extends View {
 
             return String.format(
                     Locale.US,
-                    "%.1fM",
+                    "%.2fM",
                     value / 1000000.0
             );
         }
